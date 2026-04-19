@@ -1,4 +1,5 @@
 using System.Collections;
+using IdleRestaurant.Localization;
 using UnityEngine;
 
 namespace IdleRestaurant.Gameplay
@@ -14,8 +15,9 @@ namespace IdleRestaurant.Gameplay
 
         private RestaurantRuntime runtime;
         private Coroutine serviceLoop;
+        private WaiterTaskType currentTaskType;
 
-        public string CurrentTaskLabel => currentTaskLabel;
+        public string CurrentTaskLabel => GetTaskLabel(currentTaskType);
 
         public float MoveSpeed => moveSpeed;
 
@@ -63,7 +65,7 @@ namespace IdleRestaurant.Gameplay
             {
                 if (runtime == null)
                 {
-                    currentTaskLabel = "Idle";
+                    SetCurrentTask(WaiterTaskType.None);
                     yield return null;
                     continue;
                 }
@@ -71,12 +73,12 @@ namespace IdleRestaurant.Gameplay
                 WaiterTask task;
                 if (!runtime.TryGetNextTask(out task) || !task.IsValid)
                 {
-                    currentTaskLabel = "Idle";
+                    SetCurrentTask(WaiterTaskType.None);
                     yield return null;
                     continue;
                 }
 
-                currentTaskLabel = task.Type.ToString();
+                SetCurrentTask(task.Type);
                 yield return ExecuteTask(task);
             }
         }
@@ -210,6 +212,35 @@ namespace IdleRestaurant.Gameplay
             }
 
             return seat.ServicePoint;
+        }
+
+        private void SetCurrentTask(WaiterTaskType taskType)
+        {
+            currentTaskType = taskType;
+            currentTaskLabel = GetTaskLabel(currentTaskType);
+        }
+
+        private static string GetTaskLabel(WaiterTaskType taskType)
+        {
+            switch (taskType)
+            {
+                case WaiterTaskType.TakeOrder:
+                    return LocalizationService.Get("rest.waiter.task.take_order");
+                case WaiterTaskType.SubmitOrder:
+                    return LocalizationService.Get("rest.waiter.task.submit_order");
+                case WaiterTaskType.PickupKitchen:
+                    return LocalizationService.Get("rest.waiter.task.pickup_kitchen");
+                case WaiterTaskType.PickupBar:
+                    return LocalizationService.Get("rest.waiter.task.pickup_bar");
+                case WaiterTaskType.DeliverOrder:
+                    return LocalizationService.Get("rest.waiter.task.deliver_order");
+                case WaiterTaskType.Cleanup:
+                    return LocalizationService.Get("rest.waiter.task.cleanup");
+                case WaiterTaskType.ProcessBill:
+                    return LocalizationService.Get("rest.waiter.task.process_bill");
+                default:
+                    return LocalizationService.Get("rest.waiter.task.idle");
+            }
         }
     }
 }
