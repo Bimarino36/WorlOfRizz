@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using IdleRestaurant.Localization;
+using IdleRestaurant.Meta;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
 #endif
@@ -18,6 +19,8 @@ namespace IdleRestaurant.Gameplay
         private const string SoundEnabledSaveKey = "IdleRestaurant.SoundEnabled";
         private const string SoundOnIconResource = "UI/Icons/SoundOn";
         private const string SoundOffIconResource = "UI/Icons/SoundOff";
+        private const string WildBoarBurgerRecipeId = "wild_boar_burger";
+        private const int WildBoarBurgerUnlockAdventureLevel = 3;
 
         [SerializeField] private RestaurantRuntime runtime;
         [SerializeField] private Canvas runtimeCanvas;
@@ -39,8 +42,8 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private RectTransform actionBarPanel;
         [SerializeField] private Button upgradesToggleButton;
         [SerializeField] private Text upgradesToggleButtonText;
-        [SerializeField] private Button waiterPriorityButton;
-        [SerializeField] private Text waiterPriorityButtonText;
+        [SerializeField] private Button menuButton;
+        [SerializeField] private Text menuButtonText;
         [SerializeField] private Image upgradesBackdropImage;
         [SerializeField] private Button upgradesBackdropButton;
         [SerializeField] private RectTransform upgradesPanel;
@@ -70,6 +73,17 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private Text waiterPickupUpgradeButtonText;
         [SerializeField] private Button waiterCharismaUpgradeButton;
         [SerializeField] private Text waiterCharismaUpgradeButtonText;
+        [SerializeField] private RectTransform menuPanel;
+        [SerializeField] private Button menuCloseButton;
+        [SerializeField] private Text menuCloseButtonText;
+        [SerializeField] private Text menuTitleText;
+        [SerializeField] private Text menuSubtitleText;
+        [SerializeField] private Text menuRecipeTitleText;
+        [SerializeField] private Text menuRecipeDescriptionText;
+        [SerializeField] private Text menuRecipeUnlockText;
+        [SerializeField] private Text menuRecipeStatusText;
+        [SerializeField] private Button menuRecipeActionButton;
+        [SerializeField] private Text menuRecipeActionButtonText;
         [SerializeField] private Image notificationPanelImage;
         [SerializeField] private Text notificationText;
         [SerializeField] private Image offlinePopupOverlayImage;
@@ -81,6 +95,7 @@ namespace IdleRestaurant.Gameplay
         private bool buttonHandlersBound;
         private bool upgradesPanelVisible;
         private bool waiterDetailsVisible;
+        private bool menuPanelVisible;
         private bool settingsPanelVisible;
         private bool offlinePopupVisible;
         private bool offlineReportResolved;
@@ -111,6 +126,7 @@ namespace IdleRestaurant.Gameplay
             SetSettingsPanelVisible(false);
             waiterDetailsVisible = false;
             ForceUpgradesPanelState(false);
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(false);
         }
 
@@ -122,6 +138,7 @@ namespace IdleRestaurant.Gameplay
             buttonHandlersBound = false;
             upgradesPanelVisible = false;
             waiterDetailsVisible = false;
+            menuPanelVisible = false;
             settingsPanelVisible = false;
             offlinePopupVisible = false;
             offlineReportResolved = false;
@@ -131,6 +148,7 @@ namespace IdleRestaurant.Gameplay
             ApplySoundState();
             SetSettingsPanelVisible(false);
             ForceUpgradesPanelState(false);
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(false);
             BindRuntimeNotifications();
             if (Application.isPlaying)
@@ -139,7 +157,7 @@ namespace IdleRestaurant.Gameplay
                 UpdateSettingsButton();
                 UpdateSettingsPanel();
                 UpdateUpgradesToggleLabel();
-                UpdateWaiterPriorityButton();
+                UpdateMenuButton();
             }
         }
 
@@ -179,7 +197,8 @@ namespace IdleRestaurant.Gameplay
             UpdateUpgradeButtons();
             UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
-            UpdateWaiterPriorityButton();
+            UpdateMenuButton();
+            UpdateMenuPanel();
             UpdateLanguageButton();
             UpdateUpgradesPanelAnimation();
             UpdateNotificationVisual();
@@ -287,14 +306,14 @@ namespace IdleRestaurant.Gameplay
                 upgradesToggleButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/UpgradesToggleButton/Label");
             }
 
-            if (waiterPriorityButton == null)
+            if (menuButton == null)
             {
-                waiterPriorityButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/PriorityModeButton");
+                menuButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/MenuButton");
             }
 
-            if (waiterPriorityButtonText == null)
+            if (menuButtonText == null)
             {
-                waiterPriorityButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/PriorityModeButton/Label");
+                menuButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/MenuButton/Label");
             }
 
             if (upgradesBackdropImage == null)
@@ -452,6 +471,61 @@ namespace IdleRestaurant.Gameplay
                 waiterCharismaUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/CharismaUpgradeButton/Label");
             }
 
+            if (menuPanel == null)
+            {
+                menuPanel = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/MenuPanel");
+            }
+
+            if (menuCloseButton == null)
+            {
+                menuCloseButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/CloseButton");
+            }
+
+            if (menuCloseButtonText == null)
+            {
+                menuCloseButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/CloseButton/Label");
+            }
+
+            if (menuTitleText == null)
+            {
+                menuTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/TitleText");
+            }
+
+            if (menuSubtitleText == null)
+            {
+                menuSubtitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/SubtitleText");
+            }
+
+            if (menuRecipeTitleText == null)
+            {
+                menuRecipeTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/TitleText");
+            }
+
+            if (menuRecipeDescriptionText == null)
+            {
+                menuRecipeDescriptionText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/DescriptionText");
+            }
+
+            if (menuRecipeUnlockText == null)
+            {
+                menuRecipeUnlockText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/UnlockText");
+            }
+
+            if (menuRecipeStatusText == null)
+            {
+                menuRecipeStatusText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/StatusText");
+            }
+
+            if (menuRecipeActionButton == null)
+            {
+                menuRecipeActionButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/ActionButton");
+            }
+
+            if (menuRecipeActionButtonText == null)
+            {
+                menuRecipeActionButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/ActionButton/Label");
+            }
+
             if (offlinePopupOverlayImage == null)
             {
                 offlinePopupOverlayImage = FindComponent<Image>("RuntimeHudCanvas/SafeAreaRoot/OfflinePopupOverlay");
@@ -603,9 +677,9 @@ namespace IdleRestaurant.Gameplay
                 RebindButton(upgradesToggleButton, HandleUpgradesTogglePressed);
             }
 
-            if (waiterPriorityButton != null)
+            if (menuButton != null)
             {
-                RebindButton(waiterPriorityButton, HandleWaiterPriorityPressed);
+                RebindButton(menuButton, HandleMenuPressed);
             }
 
             if (upgradesBackdropButton != null)
@@ -616,6 +690,16 @@ namespace IdleRestaurant.Gameplay
             if (upgradesCloseButton != null)
             {
                 RebindButton(upgradesCloseButton, HandleUpgradesDismissPressed);
+            }
+
+            if (menuCloseButton != null)
+            {
+                RebindButton(menuCloseButton, HandleMenuClosePressed);
+            }
+
+            if (menuRecipeActionButton != null)
+            {
+                RebindButton(menuRecipeActionButton, HandleMenuRecipeActionPressed);
             }
 
             if (offlinePopupClaimButton != null)
@@ -655,7 +739,7 @@ namespace IdleRestaurant.Gameplay
                 "<size=16>" + LocalizationService.Format("rest.stats.guests_queue", runtime.ActiveGuestCount, runtime.QueueGuestCount) + "</size>\n" +
                 "<size=16>" + LocalizationService.Format("rest.stats.served_walkouts", runtime.ServedGuests, runtime.WalkedOutGuests) + "</size>\n" +
                 "<size=16>" + LocalizationService.Format("rest.stats.queue_loyalty", runtime.QueueWalkedOutGuests, runtime.LoyaltyScore) + "</size>\n" +
-                "<size=16><color=#E7F1FF>" + LocalizationService.Format("rest.stats.waiter", waiterState, runtime.WaiterPriorityLabel) + "</color></size>";
+                "<size=16><color=#E7F1FF>" + BuildWaiterStatusLine(waiterState) + "</color></size>";
         }
 
         private void UpdateSettingsButton()
@@ -667,7 +751,7 @@ namespace IdleRestaurant.Gameplay
 
             if (settingsButton != null)
             {
-                settingsButton.interactable = !offlinePopupVisible;
+                settingsButton.interactable = !offlinePopupVisible && !menuPanelVisible;
             }
         }
 
@@ -675,7 +759,7 @@ namespace IdleRestaurant.Gameplay
         {
             if (settingsPanel != null)
             {
-                bool isVisible = settingsPanelVisible && !offlinePopupVisible;
+                bool isVisible = settingsPanelVisible && !offlinePopupVisible && !menuPanelVisible;
                 settingsPanel.gameObject.SetActive(isVisible);
                 if (isVisible)
                 {
@@ -992,6 +1076,7 @@ namespace IdleRestaurant.Gameplay
             if (!settingsPanelVisible)
             {
                 SetUpgradesPanelVisible(false);
+                SetMenuPanelVisible(false);
             }
 
             SetSettingsPanelVisible(!settingsPanelVisible);
@@ -1005,22 +1090,57 @@ namespace IdleRestaurant.Gameplay
             }
 
             SetSettingsPanelVisible(false);
+            SetMenuPanelVisible(false);
             waiterDetailsVisible = false;
             SetUpgradesPanelVisible(!upgradesPanelVisible);
             UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
         }
 
-        private void HandleWaiterPriorityPressed()
+        private void HandleMenuPressed()
         {
-            if (runtime == null)
+            if (offlinePopupVisible)
             {
-                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
                 return;
             }
 
-            runtime.CycleWaiterPriorityMode();
-            UpdateWaiterPriorityButton();
+            SetSettingsPanelVisible(false);
+            SetUpgradesPanelVisible(false);
+            waiterDetailsVisible = false;
+            SetMenuPanelVisible(!menuPanelVisible);
+        }
+
+        private void HandleMenuClosePressed()
+        {
+            if (!menuPanelVisible)
+            {
+                return;
+            }
+
+            SetMenuPanelVisible(false);
+        }
+
+        private void HandleMenuRecipeActionPressed()
+        {
+            if (IsWildBoarBurgerStudied())
+            {
+                return;
+            }
+
+            if (!IsWildBoarBurgerUnlocked())
+            {
+                ShowNotification(BuildWildBoarBurgerLockedNotification(), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!MetaProgressService.TryStudyRestaurantRecipe(WildBoarBurgerRecipeId))
+            {
+                ShowNotification(BuildWildBoarBurgerAlreadyStudiedNotification(), RestaurantNotificationType.Info);
+                return;
+            }
+
+            ShowNotification(BuildWildBoarBurgerStudiedNotification(), RestaurantNotificationType.Success);
+            UpdateMenuPanel();
         }
 
         private void HandleLanguagePressed()
@@ -1152,6 +1272,7 @@ namespace IdleRestaurant.Gameplay
             ForceUpgradesPanelState(false);
             waiterDetailsVisible = false;
             UpdateUpgradePanelContentState();
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(true);
             UpdateUpgradesToggleLabel();
         }
@@ -1262,6 +1383,11 @@ namespace IdleRestaurant.Gameplay
             {
                 settingsPanel.gameObject.SetActive(false);
             }
+
+            if (visible)
+            {
+                SetMenuPanelVisible(false);
+            }
         }
 
         private void UpdateUpgradesToggleLabel()
@@ -1273,7 +1399,102 @@ namespace IdleRestaurant.Gameplay
 
             if (upgradesToggleButton != null)
             {
-                upgradesToggleButton.interactable = !offlinePopupVisible && !upgradesPanelVisible;
+                upgradesToggleButton.interactable = !offlinePopupVisible && !upgradesPanelVisible && !menuPanelVisible;
+            }
+        }
+
+        private void SetMenuPanelVisible(bool visible)
+        {
+            menuPanelVisible = visible;
+            if (menuPanel != null)
+            {
+                bool shouldShow = visible && !offlinePopupVisible;
+                menuPanel.gameObject.SetActive(shouldShow);
+                if (shouldShow)
+                {
+                    menuPanel.SetAsLastSibling();
+                }
+            }
+        }
+
+        private void UpdateMenuButton()
+        {
+            if (menuButtonText != null)
+            {
+                menuButtonText.text = GetMenuButtonLabel();
+                menuButtonText.color = new Color(0.98f, 0.98f, 0.98f, 1f);
+            }
+
+            if (menuButton != null && menuButton.targetGraphic is Image buttonImage)
+            {
+                buttonImage.color = new Color(0.2f, 0.31f, 0.42f, 0.97f);
+                menuButton.interactable = !offlinePopupVisible && !upgradesPanelVisible && !menuPanelVisible;
+            }
+        }
+
+        private void UpdateMenuPanel()
+        {
+            if (menuPanel != null)
+            {
+                bool isVisible = menuPanelVisible && !offlinePopupVisible;
+                menuPanel.gameObject.SetActive(isVisible);
+                if (isVisible)
+                {
+                    menuPanel.SetAsLastSibling();
+                }
+            }
+
+            if (menuCloseButton != null)
+            {
+                menuCloseButton.interactable = true;
+                SetButtonVisual(menuCloseButton, menuCloseButtonText, true);
+            }
+
+            if (menuCloseButtonText != null)
+            {
+                menuCloseButtonText.text = GetMenuCloseButtonLabel();
+            }
+
+            if (menuTitleText != null)
+            {
+                menuTitleText.text = GetMenuPanelTitle();
+            }
+
+            if (menuSubtitleText != null)
+            {
+                menuSubtitleText.text = GetMenuPanelSubtitle();
+            }
+
+            if (menuRecipeTitleText != null)
+            {
+                menuRecipeTitleText.text = GetWildBoarBurgerRecipeTitle();
+            }
+
+            if (menuRecipeDescriptionText != null)
+            {
+                menuRecipeDescriptionText.text = GetWildBoarBurgerRecipeDescription();
+            }
+
+            if (menuRecipeUnlockText != null)
+            {
+                menuRecipeUnlockText.text = BuildWildBoarBurgerUnlockText();
+            }
+
+            if (menuRecipeStatusText != null)
+            {
+                menuRecipeStatusText.text = BuildWildBoarBurgerStatusText();
+            }
+
+            bool canStudyRecipe = IsWildBoarBurgerUnlocked() && !IsWildBoarBurgerStudied();
+            if (menuRecipeActionButton != null)
+            {
+                menuRecipeActionButton.interactable = canStudyRecipe;
+                SetButtonVisual(menuRecipeActionButton, menuRecipeActionButtonText, canStudyRecipe);
+            }
+
+            if (menuRecipeActionButtonText != null)
+            {
+                menuRecipeActionButtonText.text = BuildWildBoarBurgerActionLabel();
             }
         }
 
@@ -1461,6 +1682,11 @@ namespace IdleRestaurant.Gameplay
             return LocalizationService.IsRussian ? "Анатолий" : "Anatoly";
         }
 
+        private static string BuildWaiterStatusLine(string waiterState)
+        {
+            return LocalizationService.IsRussian ? "Официант: " + waiterState : "Waiter: " + waiterState;
+        }
+
         private static string GetWaiterBackButtonLabel()
         {
             return LocalizationService.IsRussian ? "Назад" : "Back";
@@ -1491,41 +1717,116 @@ namespace IdleRestaurant.Gameplay
             return LocalizationService.IsRussian ? "Обаятельность" : "Charisma";
         }
 
-        private void UpdateWaiterPriorityButton()
+        private static string GetMenuButtonLabel()
         {
-            if (waiterPriorityButton != null)
-            {
-                waiterPriorityButton.interactable = !offlinePopupVisible;
-            }
-
-            if (waiterPriorityButtonText != null)
-            {
-                waiterPriorityButtonText.text = string.Empty;
-                waiterPriorityButtonText.color = new Color(0.96f, 0.96f, 0.96f, 1f);
-            }
-
-            if (waiterPriorityButton != null && waiterPriorityButton.targetGraphic is Image buttonImage)
-            {
-                buttonImage.color = GetWaiterPriorityButtonColor();
-            }
+            return string.Empty;
         }
 
-        private Color GetWaiterPriorityButtonColor()
+        private static string GetMenuCloseButtonLabel()
         {
-            if (runtime == null)
+            return LocalizationService.IsRussian ? "Закрыть" : "Close";
+        }
+
+        private static string GetMenuPanelTitle()
+        {
+            return LocalizationService.IsRussian ? "Книга рецептов" : "Recipe book";
+        }
+
+        private static string GetMenuPanelSubtitle()
+        {
+            return LocalizationService.IsRussian ? "Рецепты" : "Recipes";
+        }
+
+        private static string GetWildBoarBurgerRecipeTitle()
+        {
+            return LocalizationService.IsRussian ? "Бургер с мясом дикого кабана" : "Wild boar burger";
+        }
+
+        private static string GetWildBoarBurgerRecipeDescription()
+        {
+            return LocalizationService.IsRussian
+                ? "Сытный бургер с котлетой из дикого кабана. После изучения рецепт останется доступным в книге рецептов."
+                : "A hearty burger with a wild boar patty. Once studied, the recipe stays available in the recipe book.";
+        }
+
+        private static bool IsWildBoarBurgerStudied()
+        {
+            return MetaProgressService.IsRestaurantRecipeStudied(WildBoarBurgerRecipeId);
+        }
+
+        private static bool IsWildBoarBurgerUnlocked()
+        {
+            return MetaProgressService.GetBestAdventureWaveCleared() >= WildBoarBurgerUnlockAdventureLevel;
+        }
+
+        private static string BuildWildBoarBurgerUnlockText()
+        {
+            int bestLevel = MetaProgressService.GetBestAdventureWaveCleared();
+            if (LocalizationService.IsRussian)
             {
-                return new Color(0.2f, 0.22f, 0.24f, 0.96f);
+                return "Требование: пройти " +
+                    WildBoarBurgerUnlockAdventureLevel +
+                    " уровень приключений. Лучший результат: " +
+                    bestLevel +
+                    ".";
             }
 
-            switch (runtime.WaiterPriority)
+            return "Requirement: clear adventure level " +
+                WildBoarBurgerUnlockAdventureLevel +
+                ". Best result: " +
+                bestLevel +
+                ".";
+        }
+
+        private static string BuildWildBoarBurgerStatusText()
+        {
+            if (IsWildBoarBurgerStudied())
             {
-                case WaiterPriorityMode.Speed:
-                    return new Color(0.17f, 0.28f, 0.43f, 0.96f);
-                case WaiterPriorityMode.TipFocus:
-                    return new Color(0.31f, 0.22f, 0.12f, 0.96f);
-                default:
-                    return new Color(0.18f, 0.32f, 0.22f, 0.96f);
+                return LocalizationService.IsRussian ? "Статус: изучено" : "Status: studied";
             }
+
+            if (IsWildBoarBurgerUnlocked())
+            {
+                return LocalizationService.IsRussian ? "Статус: доступно для изучения" : "Status: ready to study";
+            }
+
+            return LocalizationService.IsRussian ? "Статус: закрыто" : "Status: locked";
+        }
+
+        private static string BuildWildBoarBurgerActionLabel()
+        {
+            if (IsWildBoarBurgerStudied())
+            {
+                return LocalizationService.IsRussian ? "Изучено" : "Studied";
+            }
+
+            if (IsWildBoarBurgerUnlocked())
+            {
+                return LocalizationService.IsRussian ? "Изучить" : "Study";
+            }
+
+            return LocalizationService.IsRussian ? "Нужно пройти 3 уровень" : "Need level 3";
+        }
+
+        private static string BuildWildBoarBurgerLockedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Чтобы открыть рецепт \"Бургер с мясом дикого кабана\", пройди 3 уровень в приключениях."
+                : "Clear adventure level 3 to unlock the wild boar burger recipe.";
+        }
+
+        private static string BuildWildBoarBurgerStudiedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Рецепт изучен: Бургер с мясом дикого кабана."
+                : "Recipe studied: Wild boar burger.";
+        }
+
+        private static string BuildWildBoarBurgerAlreadyStudiedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Рецепт уже изучен."
+                : "Recipe is already studied.";
         }
 
         private void SetSettingsPanelVisible(bool visible)
@@ -1533,7 +1834,7 @@ namespace IdleRestaurant.Gameplay
             settingsPanelVisible = visible;
             if (settingsPanel != null)
             {
-                settingsPanel.gameObject.SetActive(visible && !offlinePopupVisible);
+                settingsPanel.gameObject.SetActive(visible && !offlinePopupVisible && !menuPanelVisible);
             }
         }
 

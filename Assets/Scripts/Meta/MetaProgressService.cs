@@ -63,10 +63,12 @@ namespace IdleRestaurant.Meta
         public int PendingRestaurantCoins;
         public int CompletedAdventureRuns;
         public int TotalAdventureRuns;
+        public int BestAdventureWaveCleared;
         public int CompletedFarmOrders;
         public int TotalHarvestedIngredients;
         public AdventureRewardResult LastAdventureReward;
         public string[] CompletedRestaurantSpecialOrders;
+        public string[] StudiedRestaurantRecipes;
         public FarmPlotData[] FarmPlots;
     }
 
@@ -83,7 +85,7 @@ namespace IdleRestaurant.Meta
 
     public static class MetaProgressService
     {
-        private const int CurrentDataVersion = 1;
+        private const int CurrentDataVersion = 2;
         private const string SaveKey = "IdleRestaurant.MetaProgress";
 
         public static MetaProgressData GetData()
@@ -134,6 +136,7 @@ namespace IdleRestaurant.Meta
             data.Seeds += Mathf.Max(0, result.Seeds);
             data.PendingRestaurantCoins += Mathf.Max(0, result.PendingRestaurantCoins);
             data.TotalAdventureRuns += 1;
+            data.BestAdventureWaveCleared = Mathf.Max(data.BestAdventureWaveCleared, Mathf.Max(0, result.WavesCleared));
             if (result.Victory)
             {
                 data.CompletedAdventureRuns += 1;
@@ -325,6 +328,41 @@ namespace IdleRestaurant.Meta
             return HasCompletedRestaurantOrder(data.CompletedRestaurantSpecialOrders, orderId);
         }
 
+        public static int GetBestAdventureWaveCleared()
+        {
+            MetaProgressData data = GetData();
+            return Mathf.Max(0, data.BestAdventureWaveCleared);
+        }
+
+        public static bool IsRestaurantRecipeStudied(string recipeId)
+        {
+            if (string.IsNullOrWhiteSpace(recipeId))
+            {
+                return false;
+            }
+
+            MetaProgressData data = GetData();
+            return HasRecordedId(data.StudiedRestaurantRecipes, recipeId);
+        }
+
+        public static bool TryStudyRestaurantRecipe(string recipeId)
+        {
+            if (string.IsNullOrWhiteSpace(recipeId))
+            {
+                return false;
+            }
+
+            MetaProgressData data = GetData();
+            if (HasRecordedId(data.StudiedRestaurantRecipes, recipeId))
+            {
+                return false;
+            }
+
+            AddRecordedId(ref data.StudiedRestaurantRecipes, recipeId);
+            Save(data);
+            return true;
+        }
+
         public static bool TryCompleteRestaurantSpecialOrder(string orderId, IReadOnlyList<SpecialOrderRequirement> requirements)
         {
             if (string.IsNullOrWhiteSpace(orderId))
@@ -377,9 +415,26 @@ namespace IdleRestaurant.Meta
                 changed = true;
             }
 
+            if (previousVersion < 2)
+            {
+                int normalizedBestWave = Mathf.Max(0, data.LastAdventureReward.WavesCleared);
+                if (normalizedBestWave > data.BestAdventureWaveCleared)
+                {
+                    data.BestAdventureWaveCleared = normalizedBestWave;
+                    changed = true;
+                }
+            }
+
             if (!data.RestaurantSceneUnlocked)
             {
                 data.RestaurantSceneUnlocked = true;
+                changed = true;
+            }
+
+            int bestWaveCleared = Mathf.Max(data.BestAdventureWaveCleared, Mathf.Max(0, data.LastAdventureReward.WavesCleared));
+            if (bestWaveCleared != data.BestAdventureWaveCleared)
+            {
+                data.BestAdventureWaveCleared = bestWaveCleared;
                 changed = true;
             }
 
@@ -583,6 +638,42 @@ namespace IdleRestaurant.Meta
 
             completedOrderIds[currentCount] = orderId;
             data.CompletedRestaurantSpecialOrders = completedOrderIds;
+        }
+
+        private static bool HasRecordedId(string[] recordedIds, string targetId)
+        {
+            if (recordedIds == null || recordedIds.Length == 0 || string.IsNullOrWhiteSpace(targetId))
+            {
+                return false;
+            }
+
+            for (int index = 0; index < recordedIds.Length; index++)
+            {
+                if (string.Equals(recordedIds[index], targetId, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void AddRecordedId(ref string[] recordedIds, string targetId)
+        {
+            if (string.IsNullOrWhiteSpace(targetId) || HasRecordedId(recordedIds, targetId))
+            {
+                return;
+            }
+
+            int currentCount = recordedIds != null ? recordedIds.Length : 0;
+            string[] nextIds = new string[currentCount + 1];
+            if (currentCount > 0)
+            {
+                Array.Copy(recordedIds, nextIds, currentCount);
+            }
+
+            nextIds[currentCount] = targetId;
+            recordedIds = nextIds;
         }
 
         private static long GetCurrentUnixSeconds()
