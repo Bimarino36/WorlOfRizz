@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using IdleRestaurant.Localization;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -32,6 +33,10 @@ namespace IdleRestaurant.Gameplay
             public int loyaltyScore;
             public int tableRevenueLevel;
             public int waiterSpeedLevel;
+            public int waiterTakeOrderSpeedLevel;
+            public int waiterSubmitOrderSpeedLevel;
+            public int waiterPickupSpeedLevel;
+            public int waiterCharismaLevel;
             public int kitchenSpeedLevel;
             public int barSpeedLevel;
             public int waiterPriorityMode;
@@ -87,17 +92,34 @@ namespace IdleRestaurant.Gameplay
         [Header("Upgrades")]
         [SerializeField, Min(0)] private int tableRevenueLevel;
         [SerializeField, Min(0)] private int waiterSpeedLevel;
+        [SerializeField, Min(0)] private int waiterTakeOrderSpeedLevel;
+        [SerializeField, Min(0)] private int waiterSubmitOrderSpeedLevel;
+        [SerializeField, Min(0)] private int waiterPickupSpeedLevel;
+        [SerializeField, Min(0)] private int waiterCharismaLevel;
         [SerializeField, Min(1)] private int baseTableRevenueUpgradeCost = 120;
         [SerializeField, Min(1)] private int baseWaiterSpeedUpgradeCost = 90;
+        [SerializeField, Min(1)] private int baseWaiterTakeOrderSpeedUpgradeCost = 80;
+        [SerializeField, Min(1)] private int baseWaiterSubmitOrderSpeedUpgradeCost = 85;
+        [SerializeField, Min(1)] private int baseWaiterPickupSpeedUpgradeCost = 95;
+        [SerializeField, Min(1)] private int baseWaiterCharismaUpgradeCost = 110;
         [SerializeField, Min(1)] private int baseKitchenSpeedUpgradeCost = 105;
         [SerializeField, Min(1)] private int baseBarSpeedUpgradeCost = 95;
         [SerializeField, Min(1f)] private float tableRevenueUpgradeCostGrowth = 1.55f;
         [SerializeField, Min(1f)] private float waiterSpeedUpgradeCostGrowth = 1.6f;
+        [SerializeField, Min(1f)] private float waiterTakeOrderSpeedUpgradeCostGrowth = 1.52f;
+        [SerializeField, Min(1f)] private float waiterSubmitOrderSpeedUpgradeCostGrowth = 1.54f;
+        [SerializeField, Min(1f)] private float waiterPickupSpeedUpgradeCostGrowth = 1.56f;
+        [SerializeField, Min(1f)] private float waiterCharismaUpgradeCostGrowth = 1.62f;
         [SerializeField, Min(1f)] private float kitchenSpeedUpgradeCostGrowth = 1.58f;
         [SerializeField, Min(1f)] private float barSpeedUpgradeCostGrowth = 1.56f;
         [SerializeField, Min(0f)] private float tableRevenueBonusPerLevel = 0.2f;
         [SerializeField, Min(0f)] private float tableTipBonusPerLevel = 0.12f;
         [SerializeField, Min(0f)] private float waiterSpeedBonusPerLevel = 0.18f;
+        [SerializeField, Min(0f)] private float waiterTakeOrderSpeedBonusPerLevel = 0.16f;
+        [SerializeField, Min(0f)] private float waiterSubmitOrderSpeedBonusPerLevel = 0.15f;
+        [SerializeField, Min(0f)] private float waiterPickupSpeedBonusPerLevel = 0.14f;
+        [SerializeField, Min(0f)] private float waiterCharismaTipBonusPerLevel = 0.12f;
+        [SerializeField, Min(0f)] private float waiterCharismaLoyaltyBonusPerLevel = 0.5f;
         [SerializeField, Min(0f)] private float kitchenSpeedBonusPerLevel = 0.16f;
         [SerializeField, Min(0f)] private float barSpeedBonusPerLevel = 0.14f;
         [SerializeField, Min(0)] private int kitchenSpeedLevel;
@@ -127,6 +149,8 @@ namespace IdleRestaurant.Gameplay
         private OfflineIncomeReport pendingOfflineIncomeReport;
 
         public event Action<string, RestaurantNotificationType> NotificationRaised;
+        public event Action StateChanged;
+        public event Action<RestaurantRuntimeSignalType, RestaurantSeat> SignalRaised;
 
         public int TotalMoney => totalMoney;
 
@@ -150,6 +174,10 @@ namespace IdleRestaurant.Gameplay
 
         public WaiterAgent Waiter => waiter;
 
+        public IReadOnlyList<RestaurantTable> Tables => tables;
+
+        public IReadOnlyList<RestaurantPoint> ServicePoints => servicePoints;
+
         public int SessionIncome => lifetimeOrderRevenue + totalTips;
 
         public float AverageCheck => servedGuests > 0 ? lifetimeOrderRevenue / (float)servedGuests : 0f;
@@ -159,6 +187,14 @@ namespace IdleRestaurant.Gameplay
         public int TableRevenueLevel => tableRevenueLevel;
 
         public int WaiterSpeedLevel => waiterSpeedLevel;
+
+        public int WaiterTakeOrderSpeedLevel => waiterTakeOrderSpeedLevel;
+
+        public int WaiterSubmitOrderSpeedLevel => waiterSubmitOrderSpeedLevel;
+
+        public int WaiterPickupSpeedLevel => waiterPickupSpeedLevel;
+
+        public int WaiterCharismaLevel => waiterCharismaLevel;
 
         public int KitchenSpeedLevel => kitchenSpeedLevel;
 
@@ -170,6 +206,18 @@ namespace IdleRestaurant.Gameplay
 
         public float WaiterSpeedMultiplier => 1f + waiterSpeedLevel * waiterSpeedBonusPerLevel;
 
+        public float WaiterTakeOrderSpeedMultiplier => 1f + waiterTakeOrderSpeedLevel * waiterTakeOrderSpeedBonusPerLevel;
+
+        public float WaiterSubmitOrderSpeedMultiplier => 1f + waiterSubmitOrderSpeedLevel * waiterSubmitOrderSpeedBonusPerLevel;
+
+        public float WaiterPickupSpeedMultiplier => 1f + waiterPickupSpeedLevel * waiterPickupSpeedBonusPerLevel;
+
+        public float WaiterCharismaTipMultiplier => 1f + waiterCharismaLevel * waiterCharismaTipBonusPerLevel;
+
+        public int WaiterCharismaLoyaltyBonus => waiterCharismaLevel > 0
+            ? Mathf.Max(1, Mathf.CeilToInt(waiterCharismaLevel * waiterCharismaLoyaltyBonusPerLevel))
+            : 0;
+
         public float KitchenSpeedMultiplier => 1f + kitchenSpeedLevel * kitchenSpeedBonusPerLevel;
 
         public float BarSpeedMultiplier => 1f + barSpeedLevel * barSpeedBonusPerLevel;
@@ -177,6 +225,14 @@ namespace IdleRestaurant.Gameplay
         public int NextTableRevenueUpgradeCost => EvaluateUpgradeCost(baseTableRevenueUpgradeCost, tableRevenueUpgradeCostGrowth, tableRevenueLevel);
 
         public int NextWaiterSpeedUpgradeCost => EvaluateUpgradeCost(baseWaiterSpeedUpgradeCost, waiterSpeedUpgradeCostGrowth, waiterSpeedLevel);
+
+        public int NextWaiterTakeOrderSpeedUpgradeCost => EvaluateUpgradeCost(baseWaiterTakeOrderSpeedUpgradeCost, waiterTakeOrderSpeedUpgradeCostGrowth, waiterTakeOrderSpeedLevel);
+
+        public int NextWaiterSubmitOrderSpeedUpgradeCost => EvaluateUpgradeCost(baseWaiterSubmitOrderSpeedUpgradeCost, waiterSubmitOrderSpeedUpgradeCostGrowth, waiterSubmitOrderSpeedLevel);
+
+        public int NextWaiterPickupSpeedUpgradeCost => EvaluateUpgradeCost(baseWaiterPickupSpeedUpgradeCost, waiterPickupSpeedUpgradeCostGrowth, waiterPickupSpeedLevel);
+
+        public int NextWaiterCharismaUpgradeCost => EvaluateUpgradeCost(baseWaiterCharismaUpgradeCost, waiterCharismaUpgradeCostGrowth, waiterCharismaLevel);
 
         public int NextKitchenSpeedUpgradeCost => EvaluateUpgradeCost(baseKitchenSpeedUpgradeCost, kitchenSpeedUpgradeCostGrowth, kitchenSpeedLevel);
 
@@ -271,6 +327,8 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
+            RestaurantNavigationBootstrap.EnsureBuilt(this);
+
             activeGuests.Clear();
             queuedGuests.Clear();
             queuedGuestWaitDurations.Clear();
@@ -281,8 +339,9 @@ namespace IdleRestaurant.Gameplay
             TryApplyOfflineIncome();
             nextSpawnAt = Time.time + 0.5f;
             waiter.BindRuntime(this);
-            ApplyWaiterSpeedUpgrade();
+            ApplyWaiterUpgrades();
             SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.Initialized, null);
         }
 
         public WaiterPriorityMode CycleWaiterPriorityMode()
@@ -301,7 +360,9 @@ namespace IdleRestaurant.Gameplay
             }
 
             SaveProgress();
-            RaiseNotification("Waiter mode: " + GetWaiterPriorityLabel(waiterPriorityMode), RestaurantNotificationType.Info);
+            RaiseNotification(
+                LocalizationService.Format("rest.notify.waiter_mode", GetWaiterPriorityLabel(waiterPriorityMode)),
+                RestaurantNotificationType.Info);
             return waiterPriorityMode;
         }
 
@@ -319,6 +380,52 @@ namespace IdleRestaurant.Gameplay
             return true;
         }
 
+        public void ShowPlayerNotification(string message, RestaurantNotificationType notificationType = RestaurantNotificationType.Info)
+        {
+            RaiseNotification(message, notificationType);
+        }
+
+        public void ApplyExternalRestaurantReward(int coins, int loyalty, string sourceLabel = null)
+        {
+            int normalizedCoins = Mathf.Max(0, coins);
+            if (normalizedCoins <= 0 && loyalty == 0)
+            {
+                return;
+            }
+
+            totalMoney += normalizedCoins;
+            loyaltyScore += loyalty;
+            SaveProgress();
+            StateChanged?.Invoke();
+
+            string rewardSource = string.IsNullOrWhiteSpace(sourceLabel)
+                ? LocalizationService.Get("rest.notify.meta_reward")
+                : sourceLabel;
+            string rewardMessage = rewardSource;
+            if (normalizedCoins > 0)
+            {
+                rewardMessage += " +$" + normalizedCoins;
+            }
+
+            if (loyalty != 0)
+            {
+                if (normalizedCoins > 0)
+                {
+                    rewardMessage += "  ";
+                }
+
+                rewardMessage += loyalty > 0
+                    ? LocalizationService.Format("rest.notify.loyalty_positive", loyalty)
+                    : LocalizationService.Format("rest.notify.loyalty_negative", loyalty);
+            }
+
+            RaiseNotification(rewardMessage, RestaurantNotificationType.Success);
+            Log(
+                rewardSource +
+                " applied. Coins: +" + normalizedCoins +
+                ", loyalty: " + loyalty + ".");
+        }
+
         public bool TryGetPoint(RestaurantPointType pointType, out RestaurantPoint point)
         {
             for (int index = 0; index < servicePoints.Count; index++)
@@ -332,6 +439,70 @@ namespace IdleRestaurant.Gameplay
 
             point = null;
             return false;
+        }
+
+        public int GetSeatCountByStatus(RestaurantSeatStatus status)
+        {
+            int count = 0;
+            List<RestaurantSeat> seats = GetAllSeats();
+            for (int index = 0; index < seats.Count; index++)
+            {
+                if (seats[index] != null && seats[index].Status == status)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public int GetTableCountByDisplayStatus(RestaurantSeatStatus status)
+        {
+            int count = 0;
+            for (int index = 0; index < tables.Count; index++)
+            {
+                if (tables[index] != null && tables[index].GetDisplayStatus() == status)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public int GetAwaitingOrderSubmissionCount()
+        {
+            return GetSeatCountByStatus(RestaurantSeatStatus.AwaitingOrderSubmission);
+        }
+
+        public int GetWaitingBillCount()
+        {
+            return GetSeatCountByStatus(RestaurantSeatStatus.WaitingBill);
+        }
+
+        public int GetCleanupTableCount()
+        {
+            return GetTableCountByDisplayStatus(RestaurantSeatStatus.NeedsCleanup);
+        }
+
+        public int GetKitchenPreparingCount()
+        {
+            return CountOrders(order => order.RequiresKitchen && order.IsSubmitted && !order.KitchenPickedUp && !order.CanPickupKitchen(Time.time));
+        }
+
+        public int GetKitchenReadyOrderCount()
+        {
+            return CountOrders(order => order.RequiresKitchen && order.IsSubmitted && !order.KitchenPickedUp && order.CanPickupKitchen(Time.time));
+        }
+
+        public int GetBarPreparingCount()
+        {
+            return CountOrders(order => order.RequiresBar && order.IsSubmitted && !order.BarPickedUp && !order.CanPickupBar(Time.time));
+        }
+
+        public int GetBarReadyOrderCount()
+        {
+            return CountOrders(order => order.RequiresBar && order.IsSubmitted && !order.BarPickedUp && order.CanPickupBar(Time.time));
         }
 
         public bool TryGetNextTask(out WaiterTask task)
@@ -477,6 +648,7 @@ namespace IdleRestaurant.Gameplay
                 seat.CurrentGuest.BeginDeliveryWait(deliveryWaitLimit, tipDecayStartNormalized);
             }
 
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.OrderTaken, seat);
             Log("Order taken at " + GetSeatLabel(seat) + " (kitchen: " + order.RequiresKitchen + ", bar: " + order.RequiresBar + ").");
         }
 
@@ -495,6 +667,7 @@ namespace IdleRestaurant.Gameplay
                 Mathf.Max(0.25f, kitchenDelay),
                 Mathf.Max(0.25f, barDelay));
             seat.MarkAwaitingPickup();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.OrderSubmitted, seat);
             Log("Order submitted for " + GetSeatLabel(seat) + ".");
         }
 
@@ -507,6 +680,7 @@ namespace IdleRestaurant.Gameplay
 
             seat.ActiveOrder.MarkKitchenPickedUp();
             seat.RefreshDeliveryState();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.KitchenPickedUp, seat);
             Log("Kitchen order picked up for " + GetSeatLabel(seat) + ".");
         }
 
@@ -519,6 +693,7 @@ namespace IdleRestaurant.Gameplay
 
             seat.ActiveOrder.MarkBarPickedUp();
             seat.RefreshDeliveryState();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.BarPickedUp, seat);
             Log("Bar order picked up for " + GetSeatLabel(seat) + ".");
         }
 
@@ -537,6 +712,7 @@ namespace IdleRestaurant.Gameplay
                 seat.CurrentGuest.BeginEating(Random.Range(eatingDurationRange.x, eatingDurationRange.y));
             }
 
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.OrderDelivered, seat);
             Log("Order delivered to " + GetSeatLabel(seat) + ".");
         }
 
@@ -554,6 +730,7 @@ namespace IdleRestaurant.Gameplay
                 seat.CurrentGuest.BeginBillWait(billWaitLimit, tipDecayStartNormalized);
             }
 
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.CleanupCompleted, seat);
             Log("Cleanup complete for " + GetSeatLabel(seat) + ".");
         }
 
@@ -571,9 +748,9 @@ namespace IdleRestaurant.Gameplay
                 serviceQuality = seat.CurrentGuest.ServiceQuality;
             }
 
-            float tipMultiplier = ServiceQualityModel.EvaluateTipMultiplier(serviceQuality);
+            float tipMultiplier = ServiceQualityModel.EvaluateTipMultiplier(serviceQuality) * WaiterCharismaTipMultiplier;
             seat.ActiveOrder.ApplyTipMultiplier(tipMultiplier);
-            int loyaltyDelta = ServiceQualityModel.EvaluateLoyaltyDelta(serviceQuality, false);
+            int loyaltyDelta = ServiceQualityModel.EvaluateLoyaltyDelta(serviceQuality, false) + WaiterCharismaLoyaltyBonus;
             loyaltyScore += loyaltyDelta;
 
             int payout = seat.ActiveOrder.TotalPrice + seat.ActiveOrder.TipAmount;
@@ -599,8 +776,9 @@ namespace IdleRestaurant.Gameplay
                 loyaltyDelta));
             Log("Bill paid at " + GetSeatLabel(seat) + ". Earned: " + seat.ActiveOrder.TotalPrice + ", tips: " + seat.ActiveOrder.TipAmount + ".");
             RaiseNotification(
-                "Income +$" + payout + "  Tips +$" + seat.ActiveOrder.TipAmount,
+                LocalizationService.Format("rest.notify.income_tips", payout, seat.ActiveOrder.TipAmount),
                 RestaurantNotificationType.Success);
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.BillDelivered, seat);
         }
 
         public void NotifyGuestFinishedEating(RestaurantGuest guest)
@@ -611,6 +789,7 @@ namespace IdleRestaurant.Gameplay
             }
 
             guest.CurrentSeat.MarkNeedsCleanup();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.CleanupNeeded, guest.CurrentSeat);
             Log("Guest finished eating at " + GetSeatLabel(guest.CurrentSeat) + ".");
         }
 
@@ -622,6 +801,7 @@ namespace IdleRestaurant.Gameplay
             }
 
             guest.BeginOrderWait(orderWaitLimit, tipDecayStartNormalized, allowGuestWalkoutBeforeOrder);
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.GuestSeated, guest.CurrentSeat);
             Log("Guest is waiting to order at " + GetSeatLabel(guest.CurrentSeat) + ".");
         }
 
@@ -643,8 +823,9 @@ namespace IdleRestaurant.Gameplay
             SaveProgress();
             seat.MarkGuestLeaving();
             guest.BeginLeaving();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.GuestWalkedOut, seat);
             Log("Guest walked out before ordering at " + GetSeatLabel(seat) + ".");
-            RaiseNotification("Guest walked out", RestaurantNotificationType.Warning);
+            RaiseNotification(LocalizationService.Get("rest.notify.guest_walked_out"), RestaurantNotificationType.Warning);
         }
 
         public void NotifyGuestExited(RestaurantGuest guest)
@@ -665,6 +846,7 @@ namespace IdleRestaurant.Gameplay
             queuedGuestWaitDurations.Remove(guest);
             queuedGuestWarned.Remove(guest);
             RefreshQueuePositions();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.GuestExited, seat);
             Log("Guest left the restaurant.");
         }
 
@@ -685,6 +867,7 @@ namespace IdleRestaurant.Gameplay
                     queuedGuests.Clear();
                     queuedGuestWaitDurations.Clear();
                     queuedGuestWarned.Clear();
+                    RaiseRuntimeSignal(RestaurantRuntimeSignalType.QueueChanged, null);
                 }
 
                 return;
@@ -717,10 +900,12 @@ namespace IdleRestaurant.Gameplay
                 activeGuests.Add(queuedGuest);
                 queuedGuestWaitDurations.Remove(queuedGuest);
                 queuedGuestWarned.Remove(queuedGuest);
+                RaiseRuntimeSignal(RestaurantRuntimeSignalType.GuestAssignedSeat, seat);
                 Log("Queued guest moved to " + GetSeatLabel(seat) + ".");
             }
 
             RefreshQueuePositions();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.QueueChanged, null);
         }
 
         private void RemoveInvalidQueueGuests()
@@ -793,13 +978,14 @@ namespace IdleRestaurant.Gameplay
                 anyWalkout = true;
 
                 Log("Queue guest walked out after waiting " + Mathf.RoundToInt(elapsed) + " sec.");
-                RaiseNotification("Queue guest left", RestaurantNotificationType.Warning);
+                RaiseNotification(LocalizationService.Get("rest.notify.queue_guest_left"), RestaurantNotificationType.Warning);
             }
 
             if (anyWalkout)
             {
                 SaveProgress();
                 RefreshQueuePositions();
+                RaiseRuntimeSignal(RestaurantRuntimeSignalType.QueueChanged, null);
             }
         }
 
@@ -830,6 +1016,7 @@ namespace IdleRestaurant.Gameplay
             queuedGuestWarned.Remove(guest);
             guest.BeginQueueing(GetQueuePosition(spawnPoint, queuedGuests.Count - 1));
             RefreshQueuePositions();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.QueueChanged, null);
             Log("Guest queued at entrance. Queue: " + queuedGuests.Count + "/" + queueCapacity + ".");
             return true;
         }
@@ -899,6 +1086,7 @@ namespace IdleRestaurant.Gameplay
             guest.Initialize(this, seat, exitPoint);
             activeGuests.Add(guest);
 
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.GuestAssignedSeat, seat);
             Log("Guest spawned for " + GetSeatLabel(seat) + ".");
             return true;
         }
@@ -913,6 +1101,7 @@ namespace IdleRestaurant.Gameplay
                     continue;
                 }
 
+                // Shared seating is temporarily disabled.
                 RestaurantSeat seat = tables[tableIndex].GetAvailableSeat();
                 if (seat != null)
                 {
@@ -1003,9 +1192,10 @@ namespace IdleRestaurant.Gameplay
             totalMoney -= cost;
             tableRevenueLevel++;
             SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
             Log("Purchased table revenue upgrade. Level: " + tableRevenueLevel + ".");
             RaiseNotification(
-                "Tables upgraded to Lv." + tableRevenueLevel + "  Income x" + TableRevenueMultiplier.ToString("0.00"),
+                LocalizationService.Format("rest.notify.tables_upgraded", tableRevenueLevel, TableRevenueMultiplier.ToString("0.00")),
                 RestaurantNotificationType.Success);
             return true;
         }
@@ -1020,12 +1210,82 @@ namespace IdleRestaurant.Gameplay
 
             totalMoney -= cost;
             waiterSpeedLevel++;
-            ApplyWaiterSpeedUpgrade();
+            ApplyWaiterUpgrades();
             SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
             Log("Purchased waiter speed upgrade. Level: " + waiterSpeedLevel + ".");
-            RaiseNotification(
-                "Waiter upgraded to Lv." + waiterSpeedLevel + "  Speed x" + WaiterSpeedMultiplier.ToString("0.00"),
-                RestaurantNotificationType.Success);
+            RaiseNotification(BuildWaiterUpgradeNotification(GetWaiterMoveUpgradeTitle(), waiterSpeedLevel, WaiterSpeedMultiplier), RestaurantNotificationType.Success);
+            return true;
+        }
+
+        public bool TryPurchaseWaiterTakeOrderSpeedUpgrade()
+        {
+            int cost = NextWaiterTakeOrderSpeedUpgradeCost;
+            if (totalMoney < cost)
+            {
+                return false;
+            }
+
+            totalMoney -= cost;
+            waiterTakeOrderSpeedLevel++;
+            ApplyWaiterUpgrades();
+            SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
+            Log("Purchased waiter order-taking speed upgrade. Level: " + waiterTakeOrderSpeedLevel + ".");
+            RaiseNotification(BuildWaiterUpgradeNotification(GetWaiterTakeOrderUpgradeTitle(), waiterTakeOrderSpeedLevel, WaiterTakeOrderSpeedMultiplier), RestaurantNotificationType.Success);
+            return true;
+        }
+
+        public bool TryPurchaseWaiterSubmitOrderSpeedUpgrade()
+        {
+            int cost = NextWaiterSubmitOrderSpeedUpgradeCost;
+            if (totalMoney < cost)
+            {
+                return false;
+            }
+
+            totalMoney -= cost;
+            waiterSubmitOrderSpeedLevel++;
+            ApplyWaiterUpgrades();
+            SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
+            Log("Purchased waiter order-submitting speed upgrade. Level: " + waiterSubmitOrderSpeedLevel + ".");
+            RaiseNotification(BuildWaiterUpgradeNotification(GetWaiterSubmitUpgradeTitle(), waiterSubmitOrderSpeedLevel, WaiterSubmitOrderSpeedMultiplier), RestaurantNotificationType.Success);
+            return true;
+        }
+
+        public bool TryPurchaseWaiterPickupSpeedUpgrade()
+        {
+            int cost = NextWaiterPickupSpeedUpgradeCost;
+            if (totalMoney < cost)
+            {
+                return false;
+            }
+
+            totalMoney -= cost;
+            waiterPickupSpeedLevel++;
+            ApplyWaiterUpgrades();
+            SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
+            Log("Purchased waiter pickup speed upgrade. Level: " + waiterPickupSpeedLevel + ".");
+            RaiseNotification(BuildWaiterUpgradeNotification(GetWaiterPickupUpgradeTitle(), waiterPickupSpeedLevel, WaiterPickupSpeedMultiplier), RestaurantNotificationType.Success);
+            return true;
+        }
+
+        public bool TryPurchaseWaiterCharismaUpgrade()
+        {
+            int cost = NextWaiterCharismaUpgradeCost;
+            if (totalMoney < cost)
+            {
+                return false;
+            }
+
+            totalMoney -= cost;
+            waiterCharismaLevel++;
+            SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
+            Log("Purchased waiter charisma upgrade. Level: " + waiterCharismaLevel + ".");
+            RaiseNotification(BuildWaiterCharismaUpgradeNotification(), RestaurantNotificationType.Success);
             return true;
         }
 
@@ -1040,9 +1300,10 @@ namespace IdleRestaurant.Gameplay
             totalMoney -= cost;
             kitchenSpeedLevel++;
             SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
             Log("Purchased kitchen speed upgrade. Level: " + kitchenSpeedLevel + ".");
             RaiseNotification(
-                "Kitchen upgraded to Lv." + kitchenSpeedLevel + "  Speed x" + KitchenSpeedMultiplier.ToString("0.00"),
+                LocalizationService.Format("rest.notify.kitchen_upgraded", kitchenSpeedLevel, KitchenSpeedMultiplier.ToString("0.00")),
                 RestaurantNotificationType.Success);
             return true;
         }
@@ -1058,9 +1319,10 @@ namespace IdleRestaurant.Gameplay
             totalMoney -= cost;
             barSpeedLevel++;
             SaveProgress();
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.UpgradeChanged, null);
             Log("Purchased bar speed upgrade. Level: " + barSpeedLevel + ".");
             RaiseNotification(
-                "Bar upgraded to Lv." + barSpeedLevel + "  Speed x" + BarSpeedMultiplier.ToString("0.00"),
+                LocalizationService.Format("rest.notify.bar_upgraded", barSpeedLevel, BarSpeedMultiplier.ToString("0.00")),
                 RestaurantNotificationType.Success);
             return true;
         }
@@ -1073,6 +1335,26 @@ namespace IdleRestaurant.Gameplay
         public bool CanAffordWaiterSpeedUpgrade()
         {
             return totalMoney >= NextWaiterSpeedUpgradeCost;
+        }
+
+        public bool CanAffordWaiterTakeOrderSpeedUpgrade()
+        {
+            return totalMoney >= NextWaiterTakeOrderSpeedUpgradeCost;
+        }
+
+        public bool CanAffordWaiterSubmitOrderSpeedUpgrade()
+        {
+            return totalMoney >= NextWaiterSubmitOrderSpeedUpgradeCost;
+        }
+
+        public bool CanAffordWaiterPickupSpeedUpgrade()
+        {
+            return totalMoney >= NextWaiterPickupSpeedUpgradeCost;
+        }
+
+        public bool CanAffordWaiterCharismaUpgrade()
+        {
+            return totalMoney >= NextWaiterCharismaUpgradeCost;
         }
 
         public bool CanAffordKitchenSpeedUpgrade()
@@ -1366,14 +1648,91 @@ namespace IdleRestaurant.Gameplay
             return true;
         }
 
-        private void ApplyWaiterSpeedUpgrade()
+        private void ApplyWaiterUpgrades()
         {
             if (waiter == null)
             {
                 return;
             }
 
-            waiter.ApplyMoveSpeedMultiplier(WaiterSpeedMultiplier);
+            waiter.ApplyServiceSpeedMultipliers(
+                WaiterSpeedMultiplier,
+                WaiterTakeOrderSpeedMultiplier,
+                WaiterSubmitOrderSpeedMultiplier,
+                WaiterPickupSpeedMultiplier);
+        }
+
+        private string GetWaiterDisplayName()
+        {
+            if (waiter != null && !string.IsNullOrWhiteSpace(waiter.DisplayName))
+            {
+                return waiter.DisplayName;
+            }
+
+            return LocalizationService.IsRussian ? "Анатолий" : "Anatoly";
+        }
+
+        private static string GetWaiterMoveUpgradeTitle()
+        {
+            return LocalizationService.IsRussian ? "скорость передвижения" : "move speed";
+        }
+
+        private static string GetWaiterTakeOrderUpgradeTitle()
+        {
+            return LocalizationService.IsRussian ? "скорость принятия заказа" : "order taking";
+        }
+
+        private static string GetWaiterSubmitUpgradeTitle()
+        {
+            return LocalizationService.IsRussian ? "скорость пробития заказа" : "order input";
+        }
+
+        private static string GetWaiterPickupUpgradeTitle()
+        {
+            return LocalizationService.IsRussian ? "скорость забора заказа" : "order pickup";
+        }
+
+        private static string GetWaiterCharismaUpgradeTitle()
+        {
+            return LocalizationService.IsRussian ? "обаятельность" : "charisma";
+        }
+
+        private string BuildWaiterUpgradeNotification(string upgradeTitle, int level, float multiplier)
+        {
+            string waiterName = GetWaiterDisplayName();
+            if (LocalizationService.IsRussian)
+            {
+                return waiterName + ": " + upgradeTitle + " ур." + level + "  x" + multiplier.ToString("0.00");
+            }
+
+            return waiterName + ": " + upgradeTitle + " Lv." + level + "  x" + multiplier.ToString("0.00");
+        }
+
+        private string BuildWaiterCharismaUpgradeNotification()
+        {
+            string waiterName = GetWaiterDisplayName();
+            if (LocalizationService.IsRussian)
+            {
+                return waiterName +
+                    ": " +
+                    GetWaiterCharismaUpgradeTitle() +
+                    " ур." +
+                    waiterCharismaLevel +
+                    "  чаевые x" +
+                    WaiterCharismaTipMultiplier.ToString("0.00") +
+                    "  лояльность +" +
+                    WaiterCharismaLoyaltyBonus;
+            }
+
+            return waiterName +
+                ": " +
+                GetWaiterCharismaUpgradeTitle() +
+                " Lv." +
+                waiterCharismaLevel +
+                "  tips x" +
+                WaiterCharismaTipMultiplier.ToString("0.00") +
+                "  loyalty +" +
+                WaiterCharismaLoyaltyBonus;
         }
 
         private void LoadProgress()
@@ -1399,6 +1758,10 @@ namespace IdleRestaurant.Gameplay
             loyaltyScore = data.loyaltyScore;
             tableRevenueLevel = Mathf.Max(0, data.tableRevenueLevel);
             waiterSpeedLevel = Mathf.Max(0, data.waiterSpeedLevel);
+            waiterTakeOrderSpeedLevel = Mathf.Max(0, data.waiterTakeOrderSpeedLevel);
+            waiterSubmitOrderSpeedLevel = Mathf.Max(0, data.waiterSubmitOrderSpeedLevel);
+            waiterPickupSpeedLevel = Mathf.Max(0, data.waiterPickupSpeedLevel);
+            waiterCharismaLevel = Mathf.Max(0, data.waiterCharismaLevel);
             kitchenSpeedLevel = Mathf.Max(0, data.kitchenSpeedLevel);
             barSpeedLevel = Mathf.Max(0, data.barSpeedLevel);
             waiterPriorityMode = IsValidPriorityMode(data.waiterPriorityMode)
@@ -1419,6 +1782,10 @@ namespace IdleRestaurant.Gameplay
                 loyaltyScore = loyaltyScore,
                 tableRevenueLevel = tableRevenueLevel,
                 waiterSpeedLevel = waiterSpeedLevel,
+                waiterTakeOrderSpeedLevel = waiterTakeOrderSpeedLevel,
+                waiterSubmitOrderSpeedLevel = waiterSubmitOrderSpeedLevel,
+                waiterPickupSpeedLevel = waiterPickupSpeedLevel,
+                waiterCharismaLevel = waiterCharismaLevel,
                 kitchenSpeedLevel = kitchenSpeedLevel,
                 barSpeedLevel = barSpeedLevel,
                 waiterPriorityMode = (int)waiterPriorityMode,
@@ -1500,6 +1867,7 @@ namespace IdleRestaurant.Gameplay
                 WasCapped = wasCapped
             };
 
+            RaiseRuntimeSignal(RestaurantRuntimeSignalType.OfflineIncomeApplied, null);
             Log("Offline income applied: +" + offlineIncome + " for " + Mathf.RoundToInt(cappedSeconds) + " sec.");
         }
 
@@ -1548,7 +1916,16 @@ namespace IdleRestaurant.Gameplay
 
         private int GetEconomyStage()
         {
-            return Mathf.Max(0, tableRevenueLevel + waiterSpeedLevel + kitchenSpeedLevel + barSpeedLevel);
+            return Mathf.Max(
+                0,
+                tableRevenueLevel +
+                waiterSpeedLevel +
+                waiterTakeOrderSpeedLevel +
+                waiterSubmitOrderSpeedLevel +
+                waiterPickupSpeedLevel +
+                waiterCharismaLevel +
+                kitchenSpeedLevel +
+                barSpeedLevel);
         }
 
         private static bool IsValidPriorityMode(int value)
@@ -1561,11 +1938,11 @@ namespace IdleRestaurant.Gameplay
             switch (mode)
             {
                 case WaiterPriorityMode.Speed:
-                    return "Speed";
+                    return LocalizationService.Get("rest.waiter.priority.speed");
                 case WaiterPriorityMode.TipFocus:
-                    return "Tip";
+                    return LocalizationService.Get("rest.waiter.priority.tip");
                 default:
-                    return "Balanced";
+                    return LocalizationService.Get("rest.waiter.priority.balanced");
             }
         }
 
@@ -1620,6 +1997,10 @@ namespace IdleRestaurant.Gameplay
             loyaltyScore = 0;
             tableRevenueLevel = 0;
             waiterSpeedLevel = 0;
+            waiterTakeOrderSpeedLevel = 0;
+            waiterSubmitOrderSpeedLevel = 0;
+            waiterPickupSpeedLevel = 0;
+            waiterCharismaLevel = 0;
             kitchenSpeedLevel = 0;
             barSpeedLevel = 0;
             waiterPriorityMode = WaiterPriorityMode.Balanced;
@@ -1628,7 +2009,7 @@ namespace IdleRestaurant.Gameplay
             queuedGuestWarned.Clear();
             hasPendingOfflineIncomeReport = false;
             pendingOfflineIncomeReport = default;
-            ApplyWaiterSpeedUpgrade();
+            ApplyWaiterUpgrades();
             SaveProgress();
         }
 
@@ -1687,6 +2068,33 @@ namespace IdleRestaurant.Gameplay
             }
 
             return seat.name;
+        }
+
+        private int CountOrders(Predicate<OrderTicket> predicate)
+        {
+            if (predicate == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            List<RestaurantSeat> seats = GetAllSeats();
+            for (int index = 0; index < seats.Count; index++)
+            {
+                OrderTicket order = seats[index] != null ? seats[index].ActiveOrder : null;
+                if (order != null && predicate(order))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private void RaiseRuntimeSignal(RestaurantRuntimeSignalType signalType, RestaurantSeat seat)
+        {
+            SignalRaised?.Invoke(signalType, seat);
+            StateChanged?.Invoke();
         }
 
         private void Log(string message)

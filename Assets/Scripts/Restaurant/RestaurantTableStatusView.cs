@@ -1,4 +1,5 @@
 using UnityEngine;
+using IdleRestaurant.Localization;
 
 namespace IdleRestaurant.Gameplay
 {
@@ -227,26 +228,26 @@ namespace IdleRestaurant.Gameplay
             switch (status)
             {
                 case RestaurantSeatStatus.Reserved:
-                    baseLabel = "Seating";
+                    baseLabel = LocalizationService.Get("rest.table.seating");
                     break;
                 case RestaurantSeatStatus.WaitingForOrder:
-                    baseLabel = "Order";
+                    baseLabel = LocalizationService.Get("rest.table.order");
                     break;
                 case RestaurantSeatStatus.AwaitingOrderSubmission:
                 case RestaurantSeatStatus.AwaitingPickup:
-                    baseLabel = "Prep";
+                    baseLabel = LocalizationService.Get("rest.table.prep");
                     break;
                 case RestaurantSeatStatus.AwaitingDelivery:
-                    baseLabel = "Serve";
+                    baseLabel = LocalizationService.Get("rest.table.serve");
                     break;
                 case RestaurantSeatStatus.Eating:
-                    baseLabel = "Eating";
+                    baseLabel = LocalizationService.Get("rest.table.eating");
                     break;
                 case RestaurantSeatStatus.NeedsCleanup:
-                    baseLabel = "Clean";
+                    baseLabel = LocalizationService.Get("rest.table.clean");
                     break;
                 case RestaurantSeatStatus.WaitingBill:
-                    baseLabel = "Bill";
+                    baseLabel = LocalizationService.Get("rest.table.bill");
                     break;
                 default:
                     baseLabel = string.Empty;

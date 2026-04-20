@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using IdleRestaurant.Localization;
+using IdleRestaurant.Meta;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
 #endif
@@ -13,23 +15,42 @@ namespace IdleRestaurant.Gameplay
         private const float NotificationFadeDuration = 0.3f;
         private const float UpgradesPanelHiddenOffsetY = -56f;
         private const float UpgradesBackdropMaxAlpha = 0.46f;
+        private const string AudioVolumeSaveKey = "IdleRestaurant.AudioVolume";
+        private const string SoundEnabledSaveKey = "IdleRestaurant.SoundEnabled";
+        private const string SoundOnIconResource = "UI/Icons/SoundOn";
+        private const string SoundOffIconResource = "UI/Icons/SoundOff";
+        private const string WildBoarBurgerRecipeId = "wild_boar_burger";
+        private const int WildBoarBurgerUnlockAdventureLevel = 3;
 
         [SerializeField] private RestaurantRuntime runtime;
         [SerializeField] private Canvas runtimeCanvas;
         [SerializeField] private RectTransform safeAreaRoot;
         [SerializeField] private RectTransform statsPanel;
+        [SerializeField] private Image statsIcon;
         [SerializeField] private Text statsText;
+        [SerializeField] private Button settingsButton;
+        [SerializeField] private Text settingsButtonText;
+        [SerializeField] private RectTransform settingsPanel;
+        [SerializeField] private Text settingsTitleText;
+        [SerializeField] private Text languageLabelText;
+        [SerializeField] private Button languageButton;
+        [SerializeField] private Text languageButtonText;
+        [SerializeField] private Text soundLabelText;
+        [SerializeField] private Button soundToggleButton;
+        [SerializeField] private Text soundToggleButtonText;
+        [SerializeField] private Image soundToggleButtonIcon;
         [SerializeField, Range(0.08f, 0.35f)] private float upgradesPanelAnimationDuration = 0.18f;
         [SerializeField] private RectTransform actionBarPanel;
         [SerializeField] private Button upgradesToggleButton;
         [SerializeField] private Text upgradesToggleButtonText;
-        [SerializeField] private Button waiterPriorityButton;
-        [SerializeField] private Text waiterPriorityButtonText;
+        [SerializeField] private Button menuButton;
+        [SerializeField] private Text menuButtonText;
         [SerializeField] private Image upgradesBackdropImage;
         [SerializeField] private Button upgradesBackdropButton;
         [SerializeField] private RectTransform upgradesPanel;
         [SerializeField] private Button upgradesCloseButton;
         [SerializeField] private Text upgradesCloseButtonText;
+        [SerializeField] private RectTransform upgradesMainContent;
         [SerializeField] private Button tableUpgradeButton;
         [SerializeField] private Text tableUpgradeButtonText;
         [SerializeField] private Button waiterUpgradeButton;
@@ -38,6 +59,32 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private Text kitchenUpgradeButtonText;
         [SerializeField] private Button barUpgradeButton;
         [SerializeField] private Text barUpgradeButtonText;
+        [SerializeField] private RectTransform waiterDetailsContent;
+        [SerializeField] private Button waiterDetailsBackButton;
+        [SerializeField] private Text waiterDetailsBackButtonText;
+        [SerializeField] private Text waiterDetailsTitleText;
+        [SerializeField] private Text waiterDetailsSummaryText;
+        [SerializeField] private Button waiterMoveSpeedUpgradeButton;
+        [SerializeField] private Text waiterMoveSpeedUpgradeButtonText;
+        [SerializeField] private Button waiterTakeOrderUpgradeButton;
+        [SerializeField] private Text waiterTakeOrderUpgradeButtonText;
+        [SerializeField] private Button waiterSubmitOrderUpgradeButton;
+        [SerializeField] private Text waiterSubmitOrderUpgradeButtonText;
+        [SerializeField] private Button waiterPickupUpgradeButton;
+        [SerializeField] private Text waiterPickupUpgradeButtonText;
+        [SerializeField] private Button waiterCharismaUpgradeButton;
+        [SerializeField] private Text waiterCharismaUpgradeButtonText;
+        [SerializeField] private RectTransform menuPanel;
+        [SerializeField] private Button menuCloseButton;
+        [SerializeField] private Text menuCloseButtonText;
+        [SerializeField] private Text menuTitleText;
+        [SerializeField] private Text menuSubtitleText;
+        [SerializeField] private Text menuRecipeTitleText;
+        [SerializeField] private Text menuRecipeDescriptionText;
+        [SerializeField] private Text menuRecipeUnlockText;
+        [SerializeField] private Text menuRecipeStatusText;
+        [SerializeField] private Button menuRecipeActionButton;
+        [SerializeField] private Text menuRecipeActionButtonText;
         [SerializeField] private Image notificationPanelImage;
         [SerializeField] private Text notificationText;
         [SerializeField] private Image offlinePopupOverlayImage;
@@ -48,9 +95,13 @@ namespace IdleRestaurant.Gameplay
 
         private bool buttonHandlersBound;
         private bool upgradesPanelVisible;
+        private bool waiterDetailsVisible;
+        private bool menuPanelVisible;
+        private bool settingsPanelVisible;
         private bool offlinePopupVisible;
         private bool offlineReportResolved;
         private int offlinePopupClaimAmount;
+        private bool soundEnabled = true;
         private Rect lastSafeArea = new Rect(-1f, -1f, -1f, -1f);
         private float notificationHideAt;
         private RestaurantRuntime subscribedRuntime;
@@ -62,13 +113,21 @@ namespace IdleRestaurant.Gameplay
         private Vector2 upgradesPanelHiddenPosition;
         private float upgradesPanelAnimationValue;
         private bool upgradesPanelAnimationInitialized;
+        private Sprite soundOnSprite;
+        private Sprite soundOffSprite;
 
         private void Awake()
         {
             ResolveRuntime();
             AutoAssignReferences();
             ConfigureCanvas();
+            LoadSoundState();
+            CacheSettingsSprites();
+            ApplySoundState();
+            SetSettingsPanelVisible(false);
+            waiterDetailsVisible = false;
             ForceUpgradesPanelState(false);
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(false);
         }
 
@@ -79,13 +138,28 @@ namespace IdleRestaurant.Gameplay
             CaptureNotificationBaseColors();
             buttonHandlersBound = false;
             upgradesPanelVisible = false;
+            waiterDetailsVisible = false;
+            menuPanelVisible = false;
+            settingsPanelVisible = false;
             offlinePopupVisible = false;
             offlineReportResolved = false;
             offlinePopupClaimAmount = 0;
             upgradesPanelAnimationInitialized = false;
+            CacheSettingsSprites();
+            ApplySoundState();
+            SetSettingsPanelVisible(false);
             ForceUpgradesPanelState(false);
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(false);
             BindRuntimeNotifications();
+            if (Application.isPlaying)
+            {
+                WireButtons();
+                UpdateSettingsButton();
+                UpdateSettingsPanel();
+                UpdateUpgradesToggleLabel();
+                UpdateMenuButton();
+            }
         }
 
         private void OnDisable()
@@ -119,9 +193,14 @@ namespace IdleRestaurant.Gameplay
             ApplySafeArea();
             TryResolveOfflineIncomePopup();
             UpdateStats();
+            UpdateSettingsButton();
+            UpdateSettingsPanel();
             UpdateUpgradeButtons();
+            UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
-            UpdateWaiterPriorityButton();
+            UpdateMenuButton();
+            UpdateMenuPanel();
+            UpdateLanguageButton();
             UpdateUpgradesPanelAnimation();
             UpdateNotificationVisual();
         }
@@ -158,6 +237,66 @@ namespace IdleRestaurant.Gameplay
                 statsText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/StatsPanel/StatsText");
             }
 
+            if (statsIcon == null)
+            {
+                statsIcon = FindComponent<Image>("RuntimeHudCanvas/SafeAreaRoot/StatsPanel/Icon");
+            }
+
+            if (settingsButton == null)
+            {
+                settingsButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/SettingsButton");
+            }
+
+            if (settingsButtonText == null)
+            {
+                settingsButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsButton/Label");
+            }
+
+            if (settingsPanel == null)
+            {
+                settingsPanel = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel");
+            }
+
+            if (settingsTitleText == null)
+            {
+                settingsTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/TitleText");
+            }
+
+            if (languageLabelText == null)
+            {
+                languageLabelText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/LanguageLabel");
+            }
+
+            if (languageButton == null)
+            {
+                languageButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/LanguageButton");
+            }
+
+            if (languageButtonText == null)
+            {
+                languageButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/LanguageButton/Label");
+            }
+
+            if (soundLabelText == null)
+            {
+                soundLabelText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/SoundLabel");
+            }
+
+            if (soundToggleButton == null)
+            {
+                soundToggleButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/SoundToggleButton");
+            }
+
+            if (soundToggleButtonText == null)
+            {
+                soundToggleButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/SoundToggleButton/Label");
+            }
+
+            if (soundToggleButtonIcon == null)
+            {
+                soundToggleButtonIcon = FindComponent<Image>("RuntimeHudCanvas/SafeAreaRoot/SettingsPanel/SoundToggleButton/Icon");
+            }
+
             if (actionBarPanel == null)
             {
                 actionBarPanel = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel");
@@ -173,14 +312,14 @@ namespace IdleRestaurant.Gameplay
                 upgradesToggleButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/UpgradesToggleButton/Label");
             }
 
-            if (waiterPriorityButton == null)
+            if (menuButton == null)
             {
-                waiterPriorityButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/PriorityModeButton");
+                menuButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/MenuButton");
             }
 
-            if (waiterPriorityButtonText == null)
+            if (menuButtonText == null)
             {
-                waiterPriorityButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/PriorityModeButton/Label");
+                menuButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/ActionBarPanel/MenuButton/Label");
             }
 
             if (upgradesBackdropImage == null)
@@ -208,24 +347,29 @@ namespace IdleRestaurant.Gameplay
                 upgradesCloseButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CloseButton/Label");
             }
 
+            if (upgradesMainContent == null)
+            {
+                upgradesMainContent = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent");
+            }
+
             if (tableUpgradeButton == null)
             {
-                tableUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/TableUpgradeButton");
+                tableUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/TableUpgradeButton");
             }
 
             if (tableUpgradeButtonText == null)
             {
-                tableUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/TableUpgradeButton/Label");
+                tableUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/TableUpgradeButton/Label");
             }
 
             if (waiterUpgradeButton == null)
             {
-                waiterUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterUpgradeButton");
+                waiterUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/WaiterUpgradeButton");
             }
 
             if (waiterUpgradeButtonText == null)
             {
-                waiterUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterUpgradeButton/Label");
+                waiterUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/WaiterUpgradeButton/Label");
             }
 
             if (notificationPanelImage == null)
@@ -240,22 +384,152 @@ namespace IdleRestaurant.Gameplay
 
             if (kitchenUpgradeButton == null)
             {
-                kitchenUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/KitchenUpgradeButton");
+                kitchenUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/KitchenUpgradeButton");
             }
 
             if (kitchenUpgradeButtonText == null)
             {
-                kitchenUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/KitchenUpgradeButton/Label");
+                kitchenUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/KitchenUpgradeButton/Label");
             }
 
             if (barUpgradeButton == null)
             {
-                barUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/BarUpgradeButton");
+                barUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/BarUpgradeButton");
             }
 
             if (barUpgradeButtonText == null)
             {
-                barUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/BarUpgradeButton/Label");
+                barUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/BarUpgradeButton/Label");
+            }
+
+            if (waiterDetailsContent == null)
+            {
+                waiterDetailsContent = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent");
+            }
+
+            if (waiterDetailsBackButton == null)
+            {
+                waiterDetailsBackButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/BackButton");
+            }
+
+            if (waiterDetailsBackButtonText == null)
+            {
+                waiterDetailsBackButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/BackButton/Label");
+            }
+
+            if (waiterDetailsTitleText == null)
+            {
+                waiterDetailsTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/TitleText");
+            }
+
+            if (waiterDetailsSummaryText == null)
+            {
+                waiterDetailsSummaryText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/SummaryText");
+            }
+
+            if (waiterMoveSpeedUpgradeButton == null)
+            {
+                waiterMoveSpeedUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/MoveSpeedUpgradeButton");
+            }
+
+            if (waiterMoveSpeedUpgradeButtonText == null)
+            {
+                waiterMoveSpeedUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/MoveSpeedUpgradeButton/Label");
+            }
+
+            if (waiterTakeOrderUpgradeButton == null)
+            {
+                waiterTakeOrderUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/TakeOrderUpgradeButton");
+            }
+
+            if (waiterTakeOrderUpgradeButtonText == null)
+            {
+                waiterTakeOrderUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/TakeOrderUpgradeButton/Label");
+            }
+
+            if (waiterSubmitOrderUpgradeButton == null)
+            {
+                waiterSubmitOrderUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/SubmitOrderUpgradeButton");
+            }
+
+            if (waiterSubmitOrderUpgradeButtonText == null)
+            {
+                waiterSubmitOrderUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/SubmitOrderUpgradeButton/Label");
+            }
+
+            if (waiterPickupUpgradeButton == null)
+            {
+                waiterPickupUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/PickupUpgradeButton");
+            }
+
+            if (waiterPickupUpgradeButtonText == null)
+            {
+                waiterPickupUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/PickupUpgradeButton/Label");
+            }
+
+            if (waiterCharismaUpgradeButton == null)
+            {
+                waiterCharismaUpgradeButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/CharismaUpgradeButton");
+            }
+
+            if (waiterCharismaUpgradeButtonText == null)
+            {
+                waiterCharismaUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/CharismaUpgradeButton/Label");
+            }
+
+            if (menuPanel == null)
+            {
+                menuPanel = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/MenuPanel");
+            }
+
+            if (menuCloseButton == null)
+            {
+                menuCloseButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/CloseButton");
+            }
+
+            if (menuCloseButtonText == null)
+            {
+                menuCloseButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/CloseButton/Label");
+            }
+
+            if (menuTitleText == null)
+            {
+                menuTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/TitleText");
+            }
+
+            if (menuSubtitleText == null)
+            {
+                menuSubtitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/SubtitleText");
+            }
+
+            if (menuRecipeTitleText == null)
+            {
+                menuRecipeTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/TitleText");
+            }
+
+            if (menuRecipeDescriptionText == null)
+            {
+                menuRecipeDescriptionText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/DescriptionText");
+            }
+
+            if (menuRecipeUnlockText == null)
+            {
+                menuRecipeUnlockText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/UnlockText");
+            }
+
+            if (menuRecipeStatusText == null)
+            {
+                menuRecipeStatusText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/StatusText");
+            }
+
+            if (menuRecipeActionButton == null)
+            {
+                menuRecipeActionButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/ActionButton");
+            }
+
+            if (menuRecipeActionButtonText == null)
+            {
+                menuRecipeActionButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/MenuPanel/RecipeCard/ActionButton/Label");
             }
 
             if (offlinePopupOverlayImage == null)
@@ -364,6 +638,36 @@ namespace IdleRestaurant.Gameplay
                 RebindButton(waiterUpgradeButton, HandleWaiterUpgradePressed);
             }
 
+            if (waiterDetailsBackButton != null)
+            {
+                RebindButton(waiterDetailsBackButton, HandleWaiterDetailsBackPressed);
+            }
+
+            if (waiterMoveSpeedUpgradeButton != null)
+            {
+                RebindButton(waiterMoveSpeedUpgradeButton, HandleWaiterMoveSpeedUpgradePressed);
+            }
+
+            if (waiterTakeOrderUpgradeButton != null)
+            {
+                RebindButton(waiterTakeOrderUpgradeButton, HandleWaiterTakeOrderUpgradePressed);
+            }
+
+            if (waiterSubmitOrderUpgradeButton != null)
+            {
+                RebindButton(waiterSubmitOrderUpgradeButton, HandleWaiterSubmitOrderUpgradePressed);
+            }
+
+            if (waiterPickupUpgradeButton != null)
+            {
+                RebindButton(waiterPickupUpgradeButton, HandleWaiterPickupUpgradePressed);
+            }
+
+            if (waiterCharismaUpgradeButton != null)
+            {
+                RebindButton(waiterCharismaUpgradeButton, HandleWaiterCharismaUpgradePressed);
+            }
+
             if (kitchenUpgradeButton != null)
             {
                 RebindButton(kitchenUpgradeButton, HandleKitchenUpgradePressed);
@@ -379,9 +683,9 @@ namespace IdleRestaurant.Gameplay
                 RebindButton(upgradesToggleButton, HandleUpgradesTogglePressed);
             }
 
-            if (waiterPriorityButton != null)
+            if (menuButton != null)
             {
-                RebindButton(waiterPriorityButton, HandleWaiterPriorityPressed);
+                RebindButton(menuButton, HandleMenuPressed);
             }
 
             if (upgradesBackdropButton != null)
@@ -394,9 +698,34 @@ namespace IdleRestaurant.Gameplay
                 RebindButton(upgradesCloseButton, HandleUpgradesDismissPressed);
             }
 
+            if (menuCloseButton != null)
+            {
+                RebindButton(menuCloseButton, HandleMenuClosePressed);
+            }
+
+            if (menuRecipeActionButton != null)
+            {
+                RebindButton(menuRecipeActionButton, HandleMenuRecipeActionPressed);
+            }
+
             if (offlinePopupClaimButton != null)
             {
                 RebindButton(offlinePopupClaimButton, HandleOfflineClaimPressed);
+            }
+
+            if (settingsButton != null)
+            {
+                RebindButton(settingsButton, HandleSettingsPressed);
+            }
+
+            if (languageButton != null)
+            {
+                RebindButton(languageButton, HandleLanguagePressed);
+            }
+
+            if (soundToggleButton != null)
+            {
+                RebindButton(soundToggleButton, HandleSoundTogglePressed);
             }
 
             buttonHandlersBound = true;
@@ -409,17 +738,61 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            string waiterState = runtime.Waiter != null ? runtime.Waiter.CurrentTaskLabel : "Missing";
-            statsText.text =
-                "Cash $" + runtime.TotalMoney + "\n" +
-                "Guests " + runtime.ActiveGuestCount + "  Queue " + runtime.QueueGuestCount + "\n" +
-                "Served " + runtime.ServedGuests + "  Walkouts " + runtime.WalkedOutGuests + "\n" +
-                "Queue WO " + runtime.QueueWalkedOutGuests + "  Loyalty " + runtime.LoyaltyScore + "\n" +
-                "Waiter: " + waiterState + " (" + runtime.WaiterPriorityLabel + ")";
+            statsText.text = BuildMoneyChipLabel(runtime.TotalMoney);
+            if (statsIcon != null)
+            {
+                statsIcon.color = new Color(0.98f, 0.89f, 0.38f, 1f);
+            }
+        }
+
+        private void UpdateSettingsButton()
+        {
+            if (settingsButtonText != null)
+            {
+                settingsButtonText.text = string.Empty;
+            }
+
+            if (settingsButton != null)
+            {
+                settingsButton.interactable = !offlinePopupVisible && !menuPanelVisible;
+            }
+        }
+
+        private void UpdateSettingsPanel()
+        {
+            if (settingsPanel != null)
+            {
+                bool isVisible = settingsPanelVisible && !offlinePopupVisible && !menuPanelVisible;
+                settingsPanel.gameObject.SetActive(isVisible);
+                if (isVisible)
+                {
+                    settingsPanel.SetAsLastSibling();
+                }
+            }
+
+            if (settingsTitleText != null)
+            {
+                settingsTitleText.text = GetSettingsTitle();
+            }
+
+            if (languageLabelText != null)
+            {
+                languageLabelText.text = GetLanguageLabel();
+            }
+
+            if (soundLabelText != null)
+            {
+                soundLabelText.text = GetSoundLabel();
+            }
+
+            UpdateSoundToggleVisual();
         }
 
         private void UpdateUpgradeButtons()
         {
+            UpdateWaiterEntryButton();
+            UpdateWaiterDetailsPanel();
+
             if (runtime == null)
             {
                 return;
@@ -435,24 +808,12 @@ namespace IdleRestaurant.Gameplay
             if (tableUpgradeButtonText != null)
             {
                 tableUpgradeButtonText.text =
-                    "Tables Lv." + runtime.TableRevenueLevel +
-                    "  " + (canAffordTableUpgrade ? "Buy $" : "Need $") + runtime.NextTableRevenueUpgradeCost +
-                    "\nIncome x" + runtime.TableRevenueMultiplier.ToString("0.00");
-            }
-
-            bool canAffordWaiterUpgrade = runtime.CanAffordWaiterSpeedUpgrade();
-            if (waiterUpgradeButton != null)
-            {
-                waiterUpgradeButton.interactable = true;
-                SetButtonVisual(waiterUpgradeButton, waiterUpgradeButtonText, canAffordWaiterUpgrade);
-            }
-
-            if (waiterUpgradeButtonText != null)
-            {
-                waiterUpgradeButtonText.text =
-                    "Waiter Lv." + runtime.WaiterSpeedLevel +
-                    "  " + (canAffordWaiterUpgrade ? "Buy $" : "Need $") + runtime.NextWaiterSpeedUpgradeCost +
-                    "\nSpeed x" + runtime.WaiterSpeedMultiplier.ToString("0.00");
+                    LocalizationService.Format(
+                        "rest.upgrade.tables",
+                        runtime.TableRevenueLevel,
+                        canAffordTableUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                        runtime.NextTableRevenueUpgradeCost,
+                        runtime.TableRevenueMultiplier.ToString("0.00"));
             }
 
             bool canAffordKitchenUpgrade = runtime.CanAffordKitchenSpeedUpgrade();
@@ -465,9 +826,12 @@ namespace IdleRestaurant.Gameplay
             if (kitchenUpgradeButtonText != null)
             {
                 kitchenUpgradeButtonText.text =
-                    "Kitchen Lv." + runtime.KitchenSpeedLevel +
-                    "  " + (canAffordKitchenUpgrade ? "Buy $" : "Need $") + runtime.NextKitchenSpeedUpgradeCost +
-                    "\nSpeed x" + runtime.KitchenSpeedMultiplier.ToString("0.00");
+                    LocalizationService.Format(
+                        "rest.upgrade.kitchen",
+                        runtime.KitchenSpeedLevel,
+                        canAffordKitchenUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                        runtime.NextKitchenSpeedUpgradeCost,
+                        runtime.KitchenSpeedMultiplier.ToString("0.00"));
             }
 
             bool canAffordBarUpgrade = runtime.CanAffordBarSpeedUpgrade();
@@ -480,9 +844,92 @@ namespace IdleRestaurant.Gameplay
             if (barUpgradeButtonText != null)
             {
                 barUpgradeButtonText.text =
-                    "Bar Lv." + runtime.BarSpeedLevel +
-                    "  " + (canAffordBarUpgrade ? "Buy $" : "Need $") + runtime.NextBarSpeedUpgradeCost +
-                    "\nSpeed x" + runtime.BarSpeedMultiplier.ToString("0.00");
+                    LocalizationService.Format(
+                        "rest.upgrade.bar",
+                        runtime.BarSpeedLevel,
+                        canAffordBarUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                        runtime.NextBarSpeedUpgradeCost,
+                        runtime.BarSpeedMultiplier.ToString("0.00"));
+            }
+        }
+
+        private void UpdateWaiterEntryButton()
+        {
+            if (waiterUpgradeButton != null)
+            {
+                waiterUpgradeButton.interactable = true;
+                SetButtonVisual(waiterUpgradeButton, waiterUpgradeButtonText, true);
+            }
+
+            if (waiterUpgradeButtonText == null)
+            {
+                return;
+            }
+
+            waiterUpgradeButtonText.text = BuildWaiterEntryLabel();
+        }
+
+        private void UpdateWaiterDetailsPanel()
+        {
+            if (waiterDetailsBackButton != null)
+            {
+                waiterDetailsBackButton.interactable = true;
+                SetButtonVisual(waiterDetailsBackButton, waiterDetailsBackButtonText, true);
+            }
+
+            if (waiterDetailsBackButtonText != null)
+            {
+                waiterDetailsBackButtonText.text = GetWaiterBackButtonLabel();
+            }
+
+            if (waiterDetailsTitleText != null)
+            {
+                waiterDetailsTitleText.text = BuildWaiterTitleLabel();
+            }
+
+            if (waiterDetailsSummaryText != null)
+            {
+                waiterDetailsSummaryText.text = BuildWaiterSummaryLabel();
+            }
+
+            UpdateWaiterUpgradeButton(
+                waiterMoveSpeedUpgradeButton,
+                waiterMoveSpeedUpgradeButtonText,
+                runtime != null && runtime.CanAffordWaiterSpeedUpgrade(),
+                BuildWaiterMoveSpeedUpgradeLabel());
+            UpdateWaiterUpgradeButton(
+                waiterTakeOrderUpgradeButton,
+                waiterTakeOrderUpgradeButtonText,
+                runtime != null && runtime.CanAffordWaiterTakeOrderSpeedUpgrade(),
+                BuildWaiterTakeOrderUpgradeLabel());
+            UpdateWaiterUpgradeButton(
+                waiterSubmitOrderUpgradeButton,
+                waiterSubmitOrderUpgradeButtonText,
+                runtime != null && runtime.CanAffordWaiterSubmitOrderSpeedUpgrade(),
+                BuildWaiterSubmitOrderUpgradeLabel());
+            UpdateWaiterUpgradeButton(
+                waiterPickupUpgradeButton,
+                waiterPickupUpgradeButtonText,
+                runtime != null && runtime.CanAffordWaiterPickupSpeedUpgrade(),
+                BuildWaiterPickupUpgradeLabel());
+            UpdateWaiterUpgradeButton(
+                waiterCharismaUpgradeButton,
+                waiterCharismaUpgradeButtonText,
+                runtime != null && runtime.CanAffordWaiterCharismaUpgrade(),
+                BuildWaiterCharismaUpgradeLabel());
+        }
+
+        private void UpdateWaiterUpgradeButton(Button button, Text buttonText, bool canAfford, string label)
+        {
+            if (button != null)
+            {
+                button.interactable = true;
+                SetButtonVisual(button, buttonText, canAfford);
+            }
+
+            if (buttonText != null)
+            {
+                buttonText.text = label;
             }
         }
 
@@ -490,13 +937,15 @@ namespace IdleRestaurant.Gameplay
         {
             if (runtime == null)
             {
-                ShowNotification("Runtime not ready", RestaurantNotificationType.Warning);
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
                 return;
             }
 
             if (!runtime.TryPurchaseTableRevenueUpgrade())
             {
-                ShowNotification("Need $" + runtime.NextTableRevenueUpgradeCost + " for table upgrade", RestaurantNotificationType.Warning);
+                ShowNotification(
+                    LocalizationService.Format("rest.notify.need_table_upgrade", runtime.NextTableRevenueUpgradeCost),
+                    RestaurantNotificationType.Warning);
             }
         }
 
@@ -504,13 +953,87 @@ namespace IdleRestaurant.Gameplay
         {
             if (runtime == null)
             {
-                ShowNotification("Runtime not ready", RestaurantNotificationType.Warning);
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            waiterDetailsVisible = true;
+            UpdateUpgradePanelContentState();
+        }
+
+        private void HandleWaiterDetailsBackPressed()
+        {
+            waiterDetailsVisible = false;
+            UpdateUpgradePanelContentState();
+        }
+
+        private void HandleWaiterMoveSpeedUpgradePressed()
+        {
+            if (runtime == null)
+            {
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
                 return;
             }
 
             if (!runtime.TryPurchaseWaiterSpeedUpgrade())
             {
-                ShowNotification("Need $" + runtime.NextWaiterSpeedUpgradeCost + " for waiter upgrade", RestaurantNotificationType.Warning);
+                ShowNotification(BuildNeedWaiterUpgradeMessage(runtime.NextWaiterSpeedUpgradeCost, GetWaiterMoveSpeedTitle()), RestaurantNotificationType.Warning);
+            }
+        }
+
+        private void HandleWaiterTakeOrderUpgradePressed()
+        {
+            if (runtime == null)
+            {
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!runtime.TryPurchaseWaiterTakeOrderSpeedUpgrade())
+            {
+                ShowNotification(BuildNeedWaiterUpgradeMessage(runtime.NextWaiterTakeOrderSpeedUpgradeCost, GetWaiterTakeOrderTitle()), RestaurantNotificationType.Warning);
+            }
+        }
+
+        private void HandleWaiterSubmitOrderUpgradePressed()
+        {
+            if (runtime == null)
+            {
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!runtime.TryPurchaseWaiterSubmitOrderSpeedUpgrade())
+            {
+                ShowNotification(BuildNeedWaiterUpgradeMessage(runtime.NextWaiterSubmitOrderSpeedUpgradeCost, GetWaiterSubmitTitle()), RestaurantNotificationType.Warning);
+            }
+        }
+
+        private void HandleWaiterPickupUpgradePressed()
+        {
+            if (runtime == null)
+            {
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!runtime.TryPurchaseWaiterPickupSpeedUpgrade())
+            {
+                ShowNotification(BuildNeedWaiterUpgradeMessage(runtime.NextWaiterPickupSpeedUpgradeCost, GetWaiterPickupTitle()), RestaurantNotificationType.Warning);
+            }
+        }
+
+        private void HandleWaiterCharismaUpgradePressed()
+        {
+            if (runtime == null)
+            {
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!runtime.TryPurchaseWaiterCharismaUpgrade())
+            {
+                ShowNotification(BuildNeedWaiterUpgradeMessage(runtime.NextWaiterCharismaUpgradeCost, GetWaiterCharismaTitle()), RestaurantNotificationType.Warning);
             }
         }
 
@@ -518,13 +1041,15 @@ namespace IdleRestaurant.Gameplay
         {
             if (runtime == null)
             {
-                ShowNotification("Runtime not ready", RestaurantNotificationType.Warning);
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
                 return;
             }
 
             if (!runtime.TryPurchaseKitchenSpeedUpgrade())
             {
-                ShowNotification("Need $" + runtime.NextKitchenSpeedUpgradeCost + " for kitchen upgrade", RestaurantNotificationType.Warning);
+                ShowNotification(
+                    LocalizationService.Format("rest.notify.need_kitchen_upgrade", runtime.NextKitchenSpeedUpgradeCost),
+                    RestaurantNotificationType.Warning);
             }
         }
 
@@ -532,14 +1057,32 @@ namespace IdleRestaurant.Gameplay
         {
             if (runtime == null)
             {
-                ShowNotification("Runtime not ready", RestaurantNotificationType.Warning);
+                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
                 return;
             }
 
             if (!runtime.TryPurchaseBarSpeedUpgrade())
             {
-                ShowNotification("Need $" + runtime.NextBarSpeedUpgradeCost + " for bar upgrade", RestaurantNotificationType.Warning);
+                ShowNotification(
+                    LocalizationService.Format("rest.notify.need_bar_upgrade", runtime.NextBarSpeedUpgradeCost),
+                    RestaurantNotificationType.Warning);
             }
+        }
+
+        private void HandleSettingsPressed()
+        {
+            if (offlinePopupVisible)
+            {
+                return;
+            }
+
+            if (!settingsPanelVisible)
+            {
+                SetUpgradesPanelVisible(false);
+                SetMenuPanelVisible(false);
+            }
+
+            SetSettingsPanelVisible(!settingsPanelVisible);
         }
 
         private void HandleUpgradesTogglePressed()
@@ -549,20 +1092,77 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
+            SetSettingsPanelVisible(false);
+            SetMenuPanelVisible(false);
+            waiterDetailsVisible = false;
             SetUpgradesPanelVisible(!upgradesPanelVisible);
+            UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
         }
 
-        private void HandleWaiterPriorityPressed()
+        private void HandleMenuPressed()
         {
-            if (runtime == null)
+            if (offlinePopupVisible)
             {
-                ShowNotification("Runtime not ready", RestaurantNotificationType.Warning);
                 return;
             }
 
-            runtime.CycleWaiterPriorityMode();
-            UpdateWaiterPriorityButton();
+            SetSettingsPanelVisible(false);
+            SetUpgradesPanelVisible(false);
+            waiterDetailsVisible = false;
+            SetMenuPanelVisible(!menuPanelVisible);
+        }
+
+        private void HandleMenuClosePressed()
+        {
+            if (!menuPanelVisible)
+            {
+                return;
+            }
+
+            SetMenuPanelVisible(false);
+        }
+
+        private void HandleMenuRecipeActionPressed()
+        {
+            if (IsWildBoarBurgerStudied())
+            {
+                return;
+            }
+
+            if (!IsWildBoarBurgerUnlocked())
+            {
+                ShowNotification(BuildWildBoarBurgerLockedNotification(), RestaurantNotificationType.Warning);
+                return;
+            }
+
+            if (!MetaProgressService.TryStudyRestaurantRecipe(WildBoarBurgerRecipeId))
+            {
+                ShowNotification(BuildWildBoarBurgerAlreadyStudiedNotification(), RestaurantNotificationType.Info);
+                return;
+            }
+
+            ShowNotification(BuildWildBoarBurgerStudiedNotification(), RestaurantNotificationType.Success);
+            UpdateMenuPanel();
+        }
+
+        private void HandleLanguagePressed()
+        {
+            LocalizationService.ToggleLanguage();
+        }
+
+        private void HandleSoundTogglePressed()
+        {
+            if (offlinePopupVisible)
+            {
+                return;
+            }
+
+            soundEnabled = !soundEnabled;
+            ApplySoundState();
+            PlayerPrefs.SetInt(SoundEnabledSaveKey, soundEnabled ? 1 : 0);
+            PlayerPrefs.Save();
+            UpdateSettingsPanel();
         }
 
         private void HandleUpgradesDismissPressed()
@@ -572,7 +1172,9 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
+            waiterDetailsVisible = false;
             SetUpgradesPanelVisible(false);
+            UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
         }
 
@@ -585,7 +1187,7 @@ namespace IdleRestaurant.Gameplay
 
             int claimedAmount = offlinePopupClaimAmount;
             SetOfflinePopupVisible(false);
-            ShowNotification("Offline income +$" + claimedAmount, RestaurantNotificationType.Success);
+            ShowNotification(LocalizationService.Format("rest.notify.offline_income", claimedAmount), RestaurantNotificationType.Success);
         }
 
         private void HandleRuntimeNotification(string message, RestaurantNotificationType notificationType)
@@ -657,7 +1259,7 @@ namespace IdleRestaurant.Gameplay
 
             if (offlinePopupTitleText != null)
             {
-                offlinePopupTitleText.text = "Offline Income";
+                offlinePopupTitleText.text = LocalizationService.Get("common.offline.title");
             }
 
             if (offlinePopupBodyText != null)
@@ -667,10 +1269,13 @@ namespace IdleRestaurant.Gameplay
 
             if (offlinePopupClaimButtonText != null)
             {
-                offlinePopupClaimButtonText.text = "Claim +$" + offlinePopupClaimAmount;
+                offlinePopupClaimButtonText.text = LocalizationService.Format("common.offline.claim", offlinePopupClaimAmount);
             }
 
             ForceUpgradesPanelState(false);
+            waiterDetailsVisible = false;
+            UpdateUpgradePanelContentState();
+            SetMenuPanelVisible(false);
             SetOfflinePopupVisible(true);
             UpdateUpgradesToggleLabel();
         }
@@ -681,16 +1286,16 @@ namespace IdleRestaurant.Gameplay
             if (report.WasCapped)
             {
                 return
-                    "Welcome back!\n" +
-                    "Away: " + durationLabel + "\n" +
-                    "Raw $" + report.RawIncome + " -> Final $" + report.FinalIncome + "\n" +
-                    "Cap $" + report.SoftCap + " (stage " + report.Stage + ")";
+                    LocalizationService.Get("common.offline.welcome") + "\n" +
+                    LocalizationService.Format("common.offline.away", durationLabel) + "\n" +
+                    LocalizationService.Format("common.offline.raw_final", report.RawIncome, report.FinalIncome) + "\n" +
+                    LocalizationService.Format("common.offline.cap", report.SoftCap, report.Stage);
             }
 
             return
-                "Welcome back!\n" +
-                "Away: " + durationLabel + "\n" +
-                "Earned $" + report.FinalIncome;
+                LocalizationService.Get("common.offline.welcome") + "\n" +
+                LocalizationService.Format("common.offline.away", durationLabel) + "\n" +
+                LocalizationService.Format("common.offline.earned", report.FinalIncome);
         }
 
         private static string FormatDuration(int totalSeconds)
@@ -704,10 +1309,10 @@ namespace IdleRestaurant.Gameplay
             int minutes = (totalSeconds % 3600) / 60;
             if (hours <= 0)
             {
-                return Mathf.Max(1, minutes) + "m";
+                return LocalizationService.Format("common.duration.minutes", Mathf.Max(1, minutes));
             }
 
-            return hours + "h " + minutes + "m";
+            return LocalizationService.Format("common.duration.hours_minutes", hours, minutes);
         }
 
         private void CaptureNotificationBaseColors()
@@ -750,6 +1355,11 @@ namespace IdleRestaurant.Gameplay
         private void SetUpgradesPanelVisible(bool visible)
         {
             upgradesPanelVisible = visible;
+            if (!visible)
+            {
+                waiterDetailsVisible = false;
+            }
+
             EnsureUpgradesPanelAnimationSetup();
             if (upgradesPanel != null && visible)
             {
@@ -760,6 +1370,8 @@ namespace IdleRestaurant.Gameplay
             {
                 upgradesBackdropImage.gameObject.SetActive(true);
             }
+
+            UpdateUpgradePanelContentState();
         }
 
         private void SetOfflinePopupVisible(bool visible)
@@ -769,62 +1381,554 @@ namespace IdleRestaurant.Gameplay
             {
                 offlinePopupOverlayImage.gameObject.SetActive(visible);
             }
+
+            if (visible && settingsPanel != null)
+            {
+                settingsPanel.gameObject.SetActive(false);
+            }
+
+            if (visible)
+            {
+                SetMenuPanelVisible(false);
+            }
         }
 
         private void UpdateUpgradesToggleLabel()
         {
             if (upgradesToggleButtonText != null)
             {
-                upgradesToggleButtonText.text = "Upgrades";
+                upgradesToggleButtonText.text = string.Empty;
             }
 
             if (upgradesToggleButton != null)
             {
-                upgradesToggleButton.interactable = !offlinePopupVisible && !upgradesPanelVisible;
+                upgradesToggleButton.interactable = !offlinePopupVisible && !upgradesPanelVisible && !menuPanelVisible;
             }
         }
 
-        private void UpdateWaiterPriorityButton()
+        private void SetMenuPanelVisible(bool visible)
         {
-            if (waiterPriorityButton != null)
+            menuPanelVisible = visible;
+            if (menuPanel != null)
             {
-                waiterPriorityButton.interactable = !offlinePopupVisible;
-            }
-
-            if (waiterPriorityButtonText != null)
-            {
-                string label = runtime != null ? runtime.WaiterPriorityLabel : "Balanced";
-                waiterPriorityButtonText.text = "Mode: " + label;
-                waiterPriorityButtonText.color = new Color(0.96f, 0.96f, 0.96f, 1f);
-            }
-
-            if (waiterPriorityButton != null && waiterPriorityButton.targetGraphic is Image buttonImage)
-            {
-                buttonImage.color = GetWaiterPriorityButtonColor();
+                bool shouldShow = visible && !offlinePopupVisible;
+                menuPanel.gameObject.SetActive(shouldShow);
+                if (shouldShow)
+                {
+                    menuPanel.SetAsLastSibling();
+                }
             }
         }
 
-        private Color GetWaiterPriorityButtonColor()
+        private void UpdateMenuButton()
+        {
+            if (menuButtonText != null)
+            {
+                menuButtonText.text = GetMenuButtonLabel();
+                menuButtonText.color = new Color(0.98f, 0.98f, 0.98f, 1f);
+            }
+
+            if (menuButton != null && menuButton.targetGraphic is Image buttonImage)
+            {
+                buttonImage.color = new Color(0.2f, 0.31f, 0.42f, 0.97f);
+                menuButton.interactable = !offlinePopupVisible && !upgradesPanelVisible && !menuPanelVisible;
+            }
+        }
+
+        private void UpdateMenuPanel()
+        {
+            if (menuPanel != null)
+            {
+                bool isVisible = menuPanelVisible && !offlinePopupVisible;
+                menuPanel.gameObject.SetActive(isVisible);
+                if (isVisible)
+                {
+                    menuPanel.SetAsLastSibling();
+                }
+            }
+
+            if (menuCloseButton != null)
+            {
+                menuCloseButton.interactable = true;
+                SetButtonVisual(menuCloseButton, menuCloseButtonText, true);
+            }
+
+            if (menuCloseButtonText != null)
+            {
+                menuCloseButtonText.text = GetMenuCloseButtonLabel();
+            }
+
+            if (menuTitleText != null)
+            {
+                menuTitleText.text = GetMenuPanelTitle();
+            }
+
+            if (menuSubtitleText != null)
+            {
+                menuSubtitleText.text = GetMenuPanelSubtitle();
+            }
+
+            if (menuRecipeTitleText != null)
+            {
+                menuRecipeTitleText.text = GetWildBoarBurgerRecipeTitle();
+            }
+
+            if (menuRecipeDescriptionText != null)
+            {
+                menuRecipeDescriptionText.text = GetWildBoarBurgerRecipeDescription();
+            }
+
+            if (menuRecipeUnlockText != null)
+            {
+                menuRecipeUnlockText.text = BuildWildBoarBurgerUnlockText();
+            }
+
+            if (menuRecipeStatusText != null)
+            {
+                menuRecipeStatusText.text = BuildWildBoarBurgerStatusText();
+            }
+
+            bool canStudyRecipe = IsWildBoarBurgerUnlocked() && !IsWildBoarBurgerStudied();
+            if (menuRecipeActionButton != null)
+            {
+                menuRecipeActionButton.interactable = canStudyRecipe;
+                SetButtonVisual(menuRecipeActionButton, menuRecipeActionButtonText, canStudyRecipe);
+            }
+
+            if (menuRecipeActionButtonText != null)
+            {
+                menuRecipeActionButtonText.text = BuildWildBoarBurgerActionLabel();
+            }
+        }
+
+        private void UpdateUpgradePanelContentState()
+        {
+            bool showWaiterDetails = upgradesPanelVisible && waiterDetailsVisible;
+
+            if (upgradesMainContent != null)
+            {
+                upgradesMainContent.gameObject.SetActive(upgradesPanelVisible && !showWaiterDetails);
+            }
+
+            if (waiterDetailsContent != null)
+            {
+                waiterDetailsContent.gameObject.SetActive(showWaiterDetails);
+            }
+        }
+
+        private string BuildWaiterEntryLabel()
+        {
+            string waiterName = GetWaiterDisplayName();
+            if (LocalizationService.IsRussian)
+            {
+                return "Официант 1 (" + waiterName + ")\nОткрыть характеристики";
+            }
+
+            return "Waiter 1 (" + waiterName + ")\nOpen stats";
+        }
+
+        private string BuildWaiterTitleLabel()
+        {
+            string waiterName = GetWaiterDisplayName();
+            return LocalizationService.IsRussian
+                ? "Официант 1 (" + waiterName + ")"
+                : "Waiter 1 (" + waiterName + ")";
+        }
+
+        private string BuildWaiterSummaryLabel()
         {
             if (runtime == null)
             {
-                return new Color(0.2f, 0.22f, 0.24f, 0.96f);
+                return LocalizationService.IsRussian
+                    ? "Передвижение x1.00  Принятие x1.00\nПробитие x1.00  Забор x1.00\nЧаевые x1.00  Лояльность +0"
+                    : "Move x1.00  Taking x1.00\nInput x1.00  Pickup x1.00\nTips x1.00  Loyalty +0";
             }
 
-            switch (runtime.WaiterPriority)
+            if (LocalizationService.IsRussian)
             {
-                case WaiterPriorityMode.Speed:
-                    return new Color(0.17f, 0.28f, 0.43f, 0.96f);
-                case WaiterPriorityMode.TipFocus:
-                    return new Color(0.31f, 0.22f, 0.12f, 0.96f);
-                default:
-                    return new Color(0.18f, 0.32f, 0.22f, 0.96f);
+                return
+                    "Передвижение x" + runtime.WaiterSpeedMultiplier.ToString("0.00") +
+                    "  Принятие x" + runtime.WaiterTakeOrderSpeedMultiplier.ToString("0.00") + "\n" +
+                    "Пробитие x" + runtime.WaiterSubmitOrderSpeedMultiplier.ToString("0.00") +
+                    "  Забор x" + runtime.WaiterPickupSpeedMultiplier.ToString("0.00") + "\n" +
+                    "Чаевые x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                    "  Лояльность +" + runtime.WaiterCharismaLoyaltyBonus;
             }
+
+            return
+                "Move x" + runtime.WaiterSpeedMultiplier.ToString("0.00") +
+                "  Taking x" + runtime.WaiterTakeOrderSpeedMultiplier.ToString("0.00") + "\n" +
+                "Input x" + runtime.WaiterSubmitOrderSpeedMultiplier.ToString("0.00") +
+                "  Pickup x" + runtime.WaiterPickupSpeedMultiplier.ToString("0.00") + "\n" +
+                "Tips x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                "  Loyalty +" + runtime.WaiterCharismaLoyaltyBonus;
+        }
+
+        private string BuildWaiterMoveSpeedUpgradeLabel()
+        {
+            if (runtime == null)
+            {
+                return BuildWaiterUpgradePreviewLabel(GetWaiterMoveSpeedTitle(), 0, true, 0, "1.00");
+            }
+
+            return BuildWaiterUpgradePreviewLabel(
+                GetWaiterMoveSpeedTitle(),
+                runtime.WaiterSpeedLevel,
+                runtime.CanAffordWaiterSpeedUpgrade(),
+                runtime.NextWaiterSpeedUpgradeCost,
+                runtime.WaiterSpeedMultiplier.ToString("0.00"));
+        }
+
+        private string BuildWaiterTakeOrderUpgradeLabel()
+        {
+            if (runtime == null)
+            {
+                return BuildWaiterUpgradePreviewLabel(GetWaiterTakeOrderTitle(), 0, true, 0, "1.00");
+            }
+
+            return BuildWaiterUpgradePreviewLabel(
+                GetWaiterTakeOrderTitle(),
+                runtime.WaiterTakeOrderSpeedLevel,
+                runtime.CanAffordWaiterTakeOrderSpeedUpgrade(),
+                runtime.NextWaiterTakeOrderSpeedUpgradeCost,
+                runtime.WaiterTakeOrderSpeedMultiplier.ToString("0.00"));
+        }
+
+        private string BuildWaiterSubmitOrderUpgradeLabel()
+        {
+            if (runtime == null)
+            {
+                return BuildWaiterUpgradePreviewLabel(GetWaiterSubmitTitle(), 0, true, 0, "1.00");
+            }
+
+            return BuildWaiterUpgradePreviewLabel(
+                GetWaiterSubmitTitle(),
+                runtime.WaiterSubmitOrderSpeedLevel,
+                runtime.CanAffordWaiterSubmitOrderSpeedUpgrade(),
+                runtime.NextWaiterSubmitOrderSpeedUpgradeCost,
+                runtime.WaiterSubmitOrderSpeedMultiplier.ToString("0.00"));
+        }
+
+        private string BuildWaiterPickupUpgradeLabel()
+        {
+            if (runtime == null)
+            {
+                return BuildWaiterUpgradePreviewLabel(GetWaiterPickupTitle(), 0, true, 0, "1.00");
+            }
+
+            return BuildWaiterUpgradePreviewLabel(
+                GetWaiterPickupTitle(),
+                runtime.WaiterPickupSpeedLevel,
+                runtime.CanAffordWaiterPickupSpeedUpgrade(),
+                runtime.NextWaiterPickupSpeedUpgradeCost,
+                runtime.WaiterPickupSpeedMultiplier.ToString("0.00"));
+        }
+
+        private string BuildWaiterCharismaUpgradeLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Обаятельность ур.0  " + LocalizationService.Get("rest.ui.action_buy") + "0\nЧаевые x1.00  Лояльность +0"
+                    : "Charisma Lv.0  " + LocalizationService.Get("rest.ui.action_buy") + "0\nTips x1.00  Loyalty +0";
+            }
+
+            string actionLabel = runtime.CanAffordWaiterCharismaUpgrade()
+                ? LocalizationService.Get("rest.ui.action_buy")
+                : LocalizationService.Get("rest.ui.action_need");
+
+            if (LocalizationService.IsRussian)
+            {
+                return "Обаятельность ур." + runtime.WaiterCharismaLevel +
+                    "  " + actionLabel + runtime.NextWaiterCharismaUpgradeCost +
+                    "\nЧаевые x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                    "  Лояльность +" + runtime.WaiterCharismaLoyaltyBonus;
+            }
+
+            return "Charisma Lv." + runtime.WaiterCharismaLevel +
+                "  " + actionLabel + runtime.NextWaiterCharismaUpgradeCost +
+                "\nTips x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                "  Loyalty +" + runtime.WaiterCharismaLoyaltyBonus;
+        }
+
+        private string BuildWaiterUpgradePreviewLabel(string title, int level, bool canAfford, int cost, string multiplierText)
+        {
+            string actionLabel = canAfford
+                ? LocalizationService.Get("rest.ui.action_buy")
+                : LocalizationService.Get("rest.ui.action_need");
+
+            if (LocalizationService.IsRussian)
+            {
+                return title + " ур." + level + "  " + actionLabel + cost + "\nСкорость x" + multiplierText;
+            }
+
+            return title + " Lv." + level + "  " + actionLabel + cost + "\nSpeed x" + multiplierText;
+        }
+
+        private string BuildNeedWaiterUpgradeMessage(int cost, string upgradeTitle)
+        {
+            if (LocalizationService.IsRussian)
+            {
+                return "Нужно $" + cost + " на улучшение \"" + upgradeTitle + "\".";
+            }
+
+            return "Need $" + cost + " for \"" + upgradeTitle + "\".";
+        }
+
+        private string GetWaiterDisplayName()
+        {
+            if (runtime != null && runtime.Waiter != null && !string.IsNullOrWhiteSpace(runtime.Waiter.DisplayName))
+            {
+                return runtime.Waiter.DisplayName;
+            }
+
+            return LocalizationService.IsRussian ? "Анатолий" : "Anatoly";
+        }
+
+        private static string BuildWaiterStatusLine(string waiterState)
+        {
+            return LocalizationService.IsRussian ? "Официант: " + waiterState : "Waiter: " + waiterState;
+        }
+
+        private static string BuildMoneyChipLabel(int moneyAmount)
+        {
+            return "$" + Mathf.Max(0, moneyAmount);
+        }
+
+        private static string GetWaiterBackButtonLabel()
+        {
+            return LocalizationService.IsRussian ? "Назад" : "Back";
+        }
+
+        private static string GetWaiterMoveSpeedTitle()
+        {
+            return LocalizationService.IsRussian ? "Передвижение" : "Movement";
+        }
+
+        private static string GetWaiterTakeOrderTitle()
+        {
+            return LocalizationService.IsRussian ? "Принятие заказа" : "Taking order";
+        }
+
+        private static string GetWaiterSubmitTitle()
+        {
+            return LocalizationService.IsRussian ? "Пробитие заказа" : "Submitting order";
+        }
+
+        private static string GetWaiterPickupTitle()
+        {
+            return LocalizationService.IsRussian ? "Забор заказа" : "Picking up";
+        }
+
+        private static string GetWaiterCharismaTitle()
+        {
+            return LocalizationService.IsRussian ? "Обаятельность" : "Charisma";
+        }
+
+        private static string GetMenuButtonLabel()
+        {
+            return string.Empty;
+        }
+
+        private static string GetMenuCloseButtonLabel()
+        {
+            return LocalizationService.IsRussian ? "Закрыть" : "Close";
+        }
+
+        private static string GetMenuPanelTitle()
+        {
+            return LocalizationService.IsRussian ? "Книга рецептов" : "Recipe book";
+        }
+
+        private static string GetMenuPanelSubtitle()
+        {
+            return LocalizationService.IsRussian ? "Рецепты" : "Recipes";
+        }
+
+        private static string GetWildBoarBurgerRecipeTitle()
+        {
+            return LocalizationService.IsRussian ? "Бургер с мясом дикого кабана" : "Wild boar burger";
+        }
+
+        private static string GetWildBoarBurgerRecipeDescription()
+        {
+            return LocalizationService.IsRussian
+                ? "Сытный бургер с котлетой из дикого кабана. После изучения рецепт останется доступным в книге рецептов."
+                : "A hearty burger with a wild boar patty. Once studied, the recipe stays available in the recipe book.";
+        }
+
+        private static bool IsWildBoarBurgerStudied()
+        {
+            return MetaProgressService.IsRestaurantRecipeStudied(WildBoarBurgerRecipeId);
+        }
+
+        private static bool IsWildBoarBurgerUnlocked()
+        {
+            return MetaProgressService.GetBestAdventureWaveCleared() >= WildBoarBurgerUnlockAdventureLevel;
+        }
+
+        private static string BuildWildBoarBurgerUnlockText()
+        {
+            int bestLevel = MetaProgressService.GetBestAdventureWaveCleared();
+            if (LocalizationService.IsRussian)
+            {
+                return "Требование: пройти " +
+                    WildBoarBurgerUnlockAdventureLevel +
+                    " уровень приключений. Лучший результат: " +
+                    bestLevel +
+                    ".";
+            }
+
+            return "Requirement: clear adventure level " +
+                WildBoarBurgerUnlockAdventureLevel +
+                ". Best result: " +
+                bestLevel +
+                ".";
+        }
+
+        private static string BuildWildBoarBurgerStatusText()
+        {
+            if (IsWildBoarBurgerStudied())
+            {
+                return LocalizationService.IsRussian ? "Статус: изучено" : "Status: studied";
+            }
+
+            if (IsWildBoarBurgerUnlocked())
+            {
+                return LocalizationService.IsRussian ? "Статус: доступно для изучения" : "Status: ready to study";
+            }
+
+            return LocalizationService.IsRussian ? "Статус: закрыто" : "Status: locked";
+        }
+
+        private static string BuildWildBoarBurgerActionLabel()
+        {
+            if (IsWildBoarBurgerStudied())
+            {
+                return LocalizationService.IsRussian ? "Изучено" : "Studied";
+            }
+
+            if (IsWildBoarBurgerUnlocked())
+            {
+                return LocalizationService.IsRussian ? "Изучить" : "Study";
+            }
+
+            return LocalizationService.IsRussian ? "Нужно пройти 3 уровень" : "Need level 3";
+        }
+
+        private static string BuildWildBoarBurgerLockedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Чтобы открыть рецепт \"Бургер с мясом дикого кабана\", пройди 3 уровень в приключениях."
+                : "Clear adventure level 3 to unlock the wild boar burger recipe.";
+        }
+
+        private static string BuildWildBoarBurgerStudiedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Рецепт изучен: Бургер с мясом дикого кабана."
+                : "Recipe studied: Wild boar burger.";
+        }
+
+        private static string BuildWildBoarBurgerAlreadyStudiedNotification()
+        {
+            return LocalizationService.IsRussian
+                ? "Рецепт уже изучен."
+                : "Recipe is already studied.";
+        }
+
+        private void SetSettingsPanelVisible(bool visible)
+        {
+            settingsPanelVisible = visible;
+            if (settingsPanel != null)
+            {
+                settingsPanel.gameObject.SetActive(visible && !offlinePopupVisible && !menuPanelVisible);
+            }
+        }
+
+        private void LoadSoundState()
+        {
+            if (PlayerPrefs.HasKey(SoundEnabledSaveKey))
+            {
+                soundEnabled = PlayerPrefs.GetInt(SoundEnabledSaveKey, 1) != 0;
+                return;
+            }
+
+            soundEnabled = PlayerPrefs.GetFloat(AudioVolumeSaveKey, 0.9f) > 0.01f;
+        }
+
+        private void ApplySoundState()
+        {
+            AudioListener.volume = soundEnabled ? 1f : 0f;
+        }
+
+        private void CacheSettingsSprites()
+        {
+            if (soundOnSprite == null)
+            {
+                soundOnSprite = Resources.Load<Sprite>(SoundOnIconResource);
+            }
+
+            if (soundOffSprite == null)
+            {
+                soundOffSprite = Resources.Load<Sprite>(SoundOffIconResource);
+            }
+        }
+
+        private void UpdateSoundToggleVisual()
+        {
+            CacheSettingsSprites();
+
+            if (soundToggleButton != null)
+            {
+                soundToggleButton.interactable = !offlinePopupVisible;
+                Image buttonImage = soundToggleButton.GetComponent<Image>();
+                if (buttonImage != null)
+                {
+                    buttonImage.color = soundEnabled
+                        ? new Color(0.23f, 0.47f, 0.32f, 0.98f)
+                        : new Color(0.19f, 0.23f, 0.28f, 0.98f);
+                }
+            }
+
+            if (soundToggleButtonText != null)
+            {
+                soundToggleButtonText.text = string.Empty;
+            }
+
+            if (soundToggleButtonIcon != null)
+            {
+                soundToggleButtonIcon.sprite = soundEnabled ? soundOnSprite : soundOffSprite;
+                soundToggleButtonIcon.preserveAspect = true;
+                soundToggleButtonIcon.color = soundEnabled
+                    ? new Color(0.98f, 0.99f, 1f, 1f)
+                    : new Color(0.83f, 0.87f, 0.92f, 0.96f);
+            }
+        }
+
+        private static string GetSettingsTitle()
+        {
+            return LocalizationService.IsRussian ? "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438" : "Settings";
+        }
+
+        private static string GetSoundLabel()
+        {
+            return LocalizationService.IsRussian ? "\u0417\u0432\u0443\u043a" : "Sound";
+        }
+
+        private static string GetLanguageLabel()
+        {
+            return LocalizationService.IsRussian ? "\u042f\u0437\u044b\u043a" : "Language";
         }
 
         private void ForceUpgradesPanelState(bool visible)
         {
             upgradesPanelVisible = visible;
+            if (!visible)
+            {
+                waiterDetailsVisible = false;
+            }
+
             EnsureUpgradesPanelAnimationSetup();
             upgradesPanelAnimationValue = visible ? 1f : 0f;
             ApplyUpgradesPanelVisual(upgradesPanelAnimationValue);
@@ -838,6 +1942,8 @@ namespace IdleRestaurant.Gameplay
             {
                 upgradesBackdropImage.gameObject.SetActive(visible);
             }
+
+            UpdateUpgradePanelContentState();
         }
 
         private void UpdateUpgradesPanelAnimation()
@@ -1021,8 +2127,8 @@ namespace IdleRestaurant.Gameplay
             if (button != null && button.targetGraphic is Image buttonImage)
             {
                 buttonImage.color = canAfford
-                    ? new Color(0.16f, 0.45f, 0.22f, 0.96f)
-                    : new Color(0.22f, 0.24f, 0.27f, 0.96f);
+                    ? new Color(0.23f, 0.5f, 0.31f, 0.98f)
+                    : new Color(0.2f, 0.24f, 0.29f, 0.98f);
             }
 
             if (buttonText != null)
@@ -1031,6 +2137,73 @@ namespace IdleRestaurant.Gameplay
                     ? new Color(0.98f, 0.98f, 0.98f, 1f)
                     : new Color(0.78f, 0.78f, 0.78f, 1f);
             }
+        }
+
+        private void EnsureLanguageButton()
+        {
+            if (settingsPanel == null)
+            {
+                return;
+            }
+
+            if (languageButton == null)
+            {
+                Transform existing = settingsPanel.Find("LanguageButton");
+                if (existing != null)
+                {
+                    languageButton = existing.GetComponent<Button>();
+                    languageButtonText = existing.GetComponentInChildren<Text>();
+                }
+            }
+
+            if (languageButton != null)
+            {
+                return;
+            }
+
+            GameObject buttonObject = new GameObject("LanguageButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+            buttonRect.SetParent(settingsPanel, false);
+            buttonRect.anchorMin = new Vector2(1f, 1f);
+            buttonRect.anchorMax = new Vector2(1f, 1f);
+            buttonRect.pivot = new Vector2(1f, 1f);
+            buttonRect.sizeDelta = new Vector2(96f, 34f);
+            buttonRect.anchoredPosition = new Vector2(-14f, -42f);
+
+            Image buttonImage = buttonObject.GetComponent<Image>();
+            Image styledButtonImage = buttonObject.GetComponent<Image>();
+            styledButtonImage.sprite = Resources.Load<Sprite>("UI/RoundedRect");
+            styledButtonImage.type = styledButtonImage.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            styledButtonImage.color = new Color(0.2f, 0.28f, 0.38f, 0.96f);
+
+            languageButton = buttonObject.GetComponent<Button>();
+            languageButton.targetGraphic = buttonImage;
+
+            GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+            labelRect.SetParent(buttonRect, false);
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(8f, 6f);
+            labelRect.offsetMax = new Vector2(-8f, -6f);
+
+            languageButtonText = labelObject.GetComponent<Text>();
+            languageButtonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            languageButtonText.fontSize = 16;
+            languageButtonText.fontStyle = FontStyle.Bold;
+            languageButtonText.alignment = TextAnchor.MiddleCenter;
+            languageButtonText.supportRichText = true;
+            languageButtonText.color = Color.white;
+        }
+
+        private void UpdateLanguageButton()
+        {
+            if (languageButton == null || languageButtonText == null)
+            {
+                return;
+            }
+
+            languageButtonText.text = LocalizationService.CurrentLanguageCode;
         }
 
         private static Color GetNotificationPanelColor(RestaurantNotificationType notificationType)

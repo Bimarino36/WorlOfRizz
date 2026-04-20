@@ -1,4 +1,5 @@
 using IdleRestaurant.Gameplay;
+using IdleRestaurant.Localization;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -43,61 +44,161 @@ namespace IdleRestaurant.Editor
             statsPanelRect.anchorMax = new Vector2(0f, 1f);
             statsPanelRect.pivot = new Vector2(0f, 1f);
             statsPanelRect.anchoredPosition = new Vector2(20f, -20f);
-            statsPanelRect.sizeDelta = new Vector2(420f, 212f);
+            statsPanelRect.sizeDelta = new Vector2(188f, 60f);
 
-            Text statsText = EnsureText(statsPanel, "StatsText", 20, TextAnchor.UpperLeft);
+            Image statsIcon = EnsureImageChild(statsPanel, "Icon", new Color(0.98f, 0.89f, 0.38f, 1f));
+            statsIcon.sprite = Resources.Load<Sprite>("UI/Icons/CoinStack");
+            statsIcon.type = Image.Type.Simple;
+            statsIcon.preserveAspect = true;
+            statsIcon.raycastTarget = false;
+            RectTransform statsIconRect = Rect(statsIcon.gameObject);
+            statsIconRect.anchorMin = new Vector2(0f, 0.5f);
+            statsIconRect.anchorMax = new Vector2(0f, 0.5f);
+            statsIconRect.pivot = new Vector2(0f, 0.5f);
+            statsIconRect.anchoredPosition = new Vector2(14f, 0f);
+            statsIconRect.sizeDelta = new Vector2(28f, 28f);
+
+            Text statsText = EnsureText(statsPanel, "StatsText", 28, TextAnchor.MiddleLeft, FontStyle.Bold);
             statsText.horizontalOverflow = HorizontalWrapMode.Wrap;
             statsText.verticalOverflow = VerticalWrapMode.Overflow;
             statsText.raycastTarget = false;
+            statsText.resizeTextForBestFit = true;
+            statsText.resizeTextMinSize = 16;
+            statsText.resizeTextMaxSize = 28;
             RectTransform statsTextRect = Rect(statsText.gameObject);
             statsTextRect.anchorMin = new Vector2(0f, 0f);
             statsTextRect.anchorMax = new Vector2(1f, 1f);
-            statsTextRect.offsetMin = new Vector2(14f, 12f);
-            statsTextRect.offsetMax = new Vector2(-14f, -12f);
-            statsText.text =
-                "Cash $0\n" +
-                "Guests 0  Queue 0\n" +
-                "Served 0  Walkouts 0\n" +
-                "Queue WO 0  Loyalty 0\n" +
-                "Waiter: Idle (Balanced)";
+            statsTextRect.offsetMin = new Vector2(52f, 0f);
+            statsTextRect.offsetMax = new Vector2(-14f, 0f);
+            statsText.text = BuildMoneyChipLabel(0);
+
+            Button settingsButton = EnsureButton(safeAreaRoot, "SettingsButton");
+            RectTransform settingsButtonRect = Rect(settingsButton.gameObject);
+            settingsButtonRect.anchorMin = new Vector2(1f, 1f);
+            settingsButtonRect.anchorMax = new Vector2(1f, 1f);
+            settingsButtonRect.pivot = new Vector2(1f, 1f);
+            settingsButtonRect.anchoredPosition = new Vector2(-18f, -18f);
+            settingsButtonRect.sizeDelta = new Vector2(48f, 48f);
+            settingsButton.GetComponent<Image>().color = new Color(0.17f, 0.21f, 0.28f, 0.97f);
+            Text settingsButtonLabel = EnsureText(settingsButton.gameObject, "Label", 28, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform settingsButtonLabelRect = Rect(settingsButtonLabel.gameObject);
+            StretchFull(settingsButtonLabelRect);
+            settingsButtonLabel.raycastTarget = false;
+            settingsButtonLabel.text = string.Empty;
+            SetButtonIcon(settingsButton, "UI/Icons/SettingsGear", new Vector2(24f, 24f));
+
+            GameObject settingsPanel = EnsureUiObject(safeAreaRoot, "SettingsPanel");
+            SetupPanel(settingsPanel, new Color(0.08f, 0.1f, 0.14f, 0.94f));
+            RectTransform settingsPanelRect = Rect(settingsPanel);
+            settingsPanelRect.anchorMin = new Vector2(1f, 1f);
+            settingsPanelRect.anchorMax = new Vector2(1f, 1f);
+            settingsPanelRect.pivot = new Vector2(1f, 1f);
+            settingsPanelRect.anchoredPosition = new Vector2(-18f, -74f);
+            settingsPanelRect.sizeDelta = new Vector2(268f, 132f);
+            settingsPanel.SetActive(false);
+
+            Text settingsTitleText = EnsureText(settingsPanel, "TitleText", 18, TextAnchor.UpperLeft, FontStyle.Bold);
+            RectTransform settingsTitleRect = Rect(settingsTitleText.gameObject);
+            settingsTitleRect.anchorMin = new Vector2(0f, 1f);
+            settingsTitleRect.anchorMax = new Vector2(1f, 1f);
+            settingsTitleRect.pivot = new Vector2(0.5f, 1f);
+            settingsTitleRect.offsetMin = new Vector2(14f, -30f);
+            settingsTitleRect.offsetMax = new Vector2(-14f, -8f);
+            settingsTitleText.raycastTarget = false;
+            settingsTitleText.text = GetSettingsTitle();
+
+            Text languageTitleText = EnsureText(settingsPanel, "LanguageLabel", 15, TextAnchor.MiddleLeft, FontStyle.Bold);
+            RectTransform languageTitleRect = Rect(languageTitleText.gameObject);
+            languageTitleRect.anchorMin = new Vector2(0f, 1f);
+            languageTitleRect.anchorMax = new Vector2(0f, 1f);
+            languageTitleRect.pivot = new Vector2(0f, 1f);
+            languageTitleRect.anchoredPosition = new Vector2(14f, -48f);
+            languageTitleRect.sizeDelta = new Vector2(112f, 24f);
+            languageTitleText.raycastTarget = false;
+            languageTitleText.text = GetLanguageLabel();
+
+            Button languageButton = EnsureButton(settingsPanel, "LanguageButton");
+            RectTransform languageButtonRect = Rect(languageButton.gameObject);
+            languageButtonRect.anchorMin = new Vector2(1f, 1f);
+            languageButtonRect.anchorMax = new Vector2(1f, 1f);
+            languageButtonRect.pivot = new Vector2(1f, 1f);
+            languageButtonRect.anchoredPosition = new Vector2(-14f, -42f);
+            languageButtonRect.sizeDelta = new Vector2(96f, 34f);
+            languageButton.GetComponent<Image>().color = new Color(0.2f, 0.28f, 0.38f, 0.96f);
+            Text languageButtonLabel = EnsureText(languageButton.gameObject, "Label", 16, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform languageButtonLabelRect = Rect(languageButtonLabel.gameObject);
+            StretchFull(languageButtonLabelRect);
+            languageButtonLabel.raycastTarget = false;
+            languageButtonLabel.text = LocalizationService.CurrentLanguageCode;
+
+            Text soundLabelText = EnsureText(settingsPanel, "SoundLabel", 15, TextAnchor.MiddleLeft, FontStyle.Bold);
+            RectTransform soundLabelRect = Rect(soundLabelText.gameObject);
+            soundLabelRect.anchorMin = new Vector2(0f, 1f);
+            soundLabelRect.anchorMax = new Vector2(0f, 1f);
+            soundLabelRect.pivot = new Vector2(0f, 1f);
+            soundLabelRect.anchoredPosition = new Vector2(14f, -92f);
+            soundLabelRect.sizeDelta = new Vector2(120f, 24f);
+            soundLabelText.raycastTarget = false;
+            soundLabelText.text = GetSoundLabel();
+
+            Button soundToggleButton = EnsureButton(settingsPanel, "SoundToggleButton");
+            RectTransform soundToggleRect = Rect(soundToggleButton.gameObject);
+            soundToggleRect.anchorMin = new Vector2(1f, 1f);
+            soundToggleRect.anchorMax = new Vector2(1f, 1f);
+            soundToggleRect.pivot = new Vector2(1f, 1f);
+            soundToggleRect.anchoredPosition = new Vector2(-14f, -84f);
+            soundToggleRect.sizeDelta = new Vector2(56f, 38f);
+            soundToggleButton.GetComponent<Image>().color = new Color(0.23f, 0.47f, 0.32f, 0.98f);
+            Text soundToggleLabel = EnsureText(soundToggleButton.gameObject, "Label", 14, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform soundToggleLabelRect = Rect(soundToggleLabel.gameObject);
+            StretchFull(soundToggleLabelRect);
+            soundToggleLabel.raycastTarget = false;
+            soundToggleLabel.text = string.Empty;
+            SetButtonIcon(soundToggleButton, "UI/Icons/SoundOn", new Vector2(22f, 22f));
+            Image soundToggleIcon = soundToggleButton.transform.Find("Icon")?.GetComponent<Image>();
 
             GameObject actionBarPanel = EnsureUiObject(safeAreaRoot, "ActionBarPanel");
-            SetupPanel(actionBarPanel, new Color(0.08f, 0.08f, 0.08f, 0.84f));
+            SetupPanel(actionBarPanel, new Color(0f, 0f, 0f, 0f));
             RectTransform actionBarRect = Rect(actionBarPanel);
             actionBarRect.anchorMin = new Vector2(0f, 0f);
-            actionBarRect.anchorMax = new Vector2(1f, 0f);
-            actionBarRect.pivot = new Vector2(0.5f, 0f);
-            actionBarRect.offsetMin = new Vector2(24f, 20f);
-            actionBarRect.offsetMax = new Vector2(-24f, 92f);
+            actionBarRect.anchorMax = new Vector2(0f, 0f);
+            actionBarRect.pivot = new Vector2(0f, 0f);
+            actionBarRect.anchoredPosition = new Vector2(20f, 20f);
+            actionBarRect.sizeDelta = new Vector2(140f, 64f);
+            actionBarPanel.GetComponent<Image>().raycastTarget = false;
 
             Button upgradesToggleButton = EnsureButton(actionBarPanel, "UpgradesToggleButton");
             RectTransform toggleRect = Rect(upgradesToggleButton.gameObject);
             toggleRect.anchorMin = new Vector2(0f, 0f);
-            toggleRect.anchorMax = new Vector2(0.58f, 1f);
+            toggleRect.anchorMax = new Vector2(0f, 0f);
             toggleRect.pivot = new Vector2(0f, 0.5f);
-            toggleRect.offsetMin = new Vector2(8f, 8f);
-            toggleRect.offsetMax = new Vector2(-6f, -8f);
-            Text toggleLabel = EnsureText(upgradesToggleButton.gameObject, "Label", 26, TextAnchor.MiddleCenter);
+            toggleRect.anchoredPosition = new Vector2(0f, 32f);
+            toggleRect.sizeDelta = new Vector2(64f, 64f);
+            upgradesToggleButton.GetComponent<Image>().color = new Color(0.27f, 0.43f, 0.24f, 0.97f);
+            Text toggleLabel = EnsureText(upgradesToggleButton.gameObject, "Label", 30, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform toggleLabelRect = Rect(toggleLabel.gameObject);
             StretchFull(toggleLabelRect);
             toggleLabel.raycastTarget = false;
-            toggleLabel.text = "Upgrades";
+            toggleLabel.text = string.Empty;
+            SetButtonIcon(upgradesToggleButton, "UI/Icons/UpgradeArrow", new Vector2(26f, 26f));
 
-            Button priorityModeButton = EnsureButton(actionBarPanel, "PriorityModeButton");
-            RectTransform priorityRect = Rect(priorityModeButton.gameObject);
-            priorityRect.anchorMin = new Vector2(0.58f, 0f);
-            priorityRect.anchorMax = new Vector2(1f, 1f);
-            priorityRect.pivot = new Vector2(1f, 0.5f);
-            priorityRect.offsetMin = new Vector2(6f, 8f);
-            priorityRect.offsetMax = new Vector2(-8f, -8f);
-            Text priorityLabel = EnsureText(priorityModeButton.gameObject, "Label", 22, TextAnchor.MiddleCenter);
-            RectTransform priorityLabelRect = Rect(priorityLabel.gameObject);
-            StretchFull(priorityLabelRect);
-            priorityLabel.raycastTarget = false;
-            priorityLabel.text = "Mode: Balanced";
+            Button menuButton = EnsureButton(actionBarPanel, "MenuButton");
+            RectTransform menuButtonRect = Rect(menuButton.gameObject);
+            menuButtonRect.anchorMin = new Vector2(0f, 0f);
+            menuButtonRect.anchorMax = new Vector2(0f, 0f);
+            menuButtonRect.pivot = new Vector2(0f, 0.5f);
+            menuButtonRect.anchoredPosition = new Vector2(76f, 32f);
+            menuButtonRect.sizeDelta = new Vector2(64f, 64f);
+            menuButton.GetComponent<Image>().color = new Color(0.2f, 0.31f, 0.42f, 0.97f);
+            Text menuLabel = EnsureText(menuButton.gameObject, "Label", 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform menuLabelRect = Rect(menuLabel.gameObject);
+            StretchFull(menuLabelRect);
+            menuLabel.raycastTarget = false;
+            menuLabel.text = GetMenuButtonLabel();
+            SetButtonIcon(menuButton, "UI/Icons/RecipeBook", new Vector2(28f, 28f));
 
             GameObject upgradesBackdrop = EnsureUiObject(safeAreaRoot, "UpgradesBackdrop");
-            SetupPanel(upgradesBackdrop, new Color(0f, 0f, 0f, 0.5f));
+            SetupPanel(upgradesBackdrop, new Color(0f, 0f, 0f, 0.56f), true);
             RectTransform upgradesBackdropRect = Rect(upgradesBackdrop);
             StretchFull(upgradesBackdropRect);
             Button upgradesBackdropButton = upgradesBackdrop.GetComponent<Button>();
@@ -110,17 +211,23 @@ namespace IdleRestaurant.Editor
             upgradesBackdrop.SetActive(false);
 
             GameObject upgradesPanel = EnsureUiObject(safeAreaRoot, "UpgradesPanel");
-            SetupPanel(upgradesPanel, new Color(0.08f, 0.08f, 0.08f, 0.88f));
+            SetupPanel(upgradesPanel, new Color(0.08f, 0.1f, 0.14f, 0.95f));
             RectTransform upgradesRect = Rect(upgradesPanel);
             upgradesRect.anchorMin = new Vector2(0f, 0f);
             upgradesRect.anchorMax = new Vector2(1f, 0f);
             upgradesRect.pivot = new Vector2(0.5f, 0f);
-            upgradesRect.offsetMin = new Vector2(24f, 104f);
-            upgradesRect.offsetMax = new Vector2(-24f, 560f);
+            upgradesRect.offsetMin = new Vector2(24f, 122f);
+            upgradesRect.offsetMax = new Vector2(-24f, 620f);
 
-            Button tableButton = EnsureButton(upgradesPanel, "TableUpgradeButton");
+            GameObject mainContent = EnsureUiObject(upgradesPanel, "MainContent");
+            RectTransform mainContentRect = Rect(mainContent);
+            StretchFull(mainContentRect);
+            mainContentRect.offsetMin = new Vector2(0f, 0f);
+            mainContentRect.offsetMax = new Vector2(0f, 0f);
+
+            Button tableButton = EnsureButton(mainContent, "TableUpgradeButton");
             LayoutButtonStack(Rect(tableButton.gameObject), 0, 4);
-            Text tableLabel = EnsureText(tableButton.gameObject, "Label", 22, TextAnchor.MiddleCenter);
+            Text tableLabel = EnsureText(tableButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform tableLabelRect = Rect(tableLabel.gameObject);
             StretchFull(tableLabelRect);
             tableLabelRect.offsetMin = new Vector2(18f, 12f);
@@ -128,19 +235,19 @@ namespace IdleRestaurant.Editor
             tableLabel.raycastTarget = false;
             tableLabel.text = "Tables Lv.0  Need $120\nIncome x1.00";
 
-            Button waiterButton = EnsureButton(upgradesPanel, "WaiterUpgradeButton");
+            Button waiterButton = EnsureButton(mainContent, "WaiterUpgradeButton");
             LayoutButtonStack(Rect(waiterButton.gameObject), 1, 4);
-            Text waiterLabel = EnsureText(waiterButton.gameObject, "Label", 22, TextAnchor.MiddleCenter);
+            Text waiterLabel = EnsureText(waiterButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform waiterLabelRect = Rect(waiterLabel.gameObject);
             StretchFull(waiterLabelRect);
             waiterLabelRect.offsetMin = new Vector2(18f, 12f);
             waiterLabelRect.offsetMax = new Vector2(-18f, -12f);
             waiterLabel.raycastTarget = false;
-            waiterLabel.text = "Waiter Lv.0  Need $90\nSpeed x1.00";
+            waiterLabel.text = GetWaiterEntryLabel();
 
-            Button kitchenButton = EnsureButton(upgradesPanel, "KitchenUpgradeButton");
+            Button kitchenButton = EnsureButton(mainContent, "KitchenUpgradeButton");
             LayoutButtonStack(Rect(kitchenButton.gameObject), 2, 4);
-            Text kitchenLabel = EnsureText(kitchenButton.gameObject, "Label", 22, TextAnchor.MiddleCenter);
+            Text kitchenLabel = EnsureText(kitchenButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform kitchenLabelRect = Rect(kitchenLabel.gameObject);
             StretchFull(kitchenLabelRect);
             kitchenLabelRect.offsetMin = new Vector2(18f, 12f);
@@ -148,9 +255,9 @@ namespace IdleRestaurant.Editor
             kitchenLabel.raycastTarget = false;
             kitchenLabel.text = "Kitchen Lv.0  Need $105\nSpeed x1.00";
 
-            Button barButton = EnsureButton(upgradesPanel, "BarUpgradeButton");
+            Button barButton = EnsureButton(mainContent, "BarUpgradeButton");
             LayoutButtonStack(Rect(barButton.gameObject), 3, 4);
-            Text barLabel = EnsureText(barButton.gameObject, "Label", 22, TextAnchor.MiddleCenter);
+            Text barLabel = EnsureText(barButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform barLabelRect = Rect(barLabel.gameObject);
             StretchFull(barLabelRect);
             barLabelRect.offsetMin = new Vector2(18f, 12f);
@@ -158,18 +265,227 @@ namespace IdleRestaurant.Editor
             barLabel.raycastTarget = false;
             barLabel.text = "Bar Lv.0  Need $95\nSpeed x1.00";
 
+            GameObject waiterDetailsContent = EnsureUiObject(upgradesPanel, "WaiterDetailsContent");
+            RectTransform waiterDetailsRect = Rect(waiterDetailsContent);
+            StretchFull(waiterDetailsRect);
+            waiterDetailsRect.offsetMin = new Vector2(0f, 0f);
+            waiterDetailsRect.offsetMax = new Vector2(0f, 0f);
+            waiterDetailsContent.SetActive(false);
+
+            Button waiterBackButton = EnsureButton(waiterDetailsContent, "BackButton");
+            RectTransform waiterBackRect = Rect(waiterBackButton.gameObject);
+            waiterBackRect.anchorMin = new Vector2(0f, 1f);
+            waiterBackRect.anchorMax = new Vector2(0f, 1f);
+            waiterBackRect.pivot = new Vector2(0f, 1f);
+            waiterBackRect.anchoredPosition = new Vector2(16f, -14f);
+            waiterBackRect.sizeDelta = new Vector2(132f, 42f);
+            waiterBackButton.GetComponent<Image>().color = new Color(0.18f, 0.32f, 0.22f, 0.98f);
+            Text waiterBackLabel = EnsureText(waiterBackButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterBackLabelRect = Rect(waiterBackLabel.gameObject);
+            StretchFull(waiterBackLabelRect);
+            waiterBackLabel.raycastTarget = false;
+            waiterBackLabel.text = GetWaiterBackLabel();
+
+            Text waiterTitleText = EnsureText(waiterDetailsContent, "TitleText", 26, TextAnchor.UpperCenter, FontStyle.Bold);
+            waiterTitleText.raycastTarget = false;
+            RectTransform waiterTitleRect = Rect(waiterTitleText.gameObject);
+            waiterTitleRect.anchorMin = new Vector2(0.5f, 1f);
+            waiterTitleRect.anchorMax = new Vector2(0.5f, 1f);
+            waiterTitleRect.pivot = new Vector2(0.5f, 1f);
+            waiterTitleRect.anchoredPosition = new Vector2(0f, -18f);
+            waiterTitleRect.sizeDelta = new Vector2(660f, 38f);
+            waiterTitleText.text = GetWaiterDetailsTitle();
+
+            Text waiterSummaryText = EnsureText(waiterDetailsContent, "SummaryText", 16, TextAnchor.UpperCenter, FontStyle.Normal);
+            waiterSummaryText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            waiterSummaryText.verticalOverflow = VerticalWrapMode.Overflow;
+            waiterSummaryText.raycastTarget = false;
+            RectTransform waiterSummaryRect = Rect(waiterSummaryText.gameObject);
+            waiterSummaryRect.anchorMin = new Vector2(0f, 1f);
+            waiterSummaryRect.anchorMax = new Vector2(1f, 1f);
+            waiterSummaryRect.pivot = new Vector2(0.5f, 1f);
+            waiterSummaryRect.offsetMin = new Vector2(26f, -96f);
+            waiterSummaryRect.offsetMax = new Vector2(-26f, -48f);
+            waiterSummaryText.text = GetWaiterSummary();
+
+            GameObject waiterButtonsRoot = EnsureUiObject(waiterDetailsContent, "ButtonsRoot");
+            RectTransform waiterButtonsRect = Rect(waiterButtonsRoot);
+            StretchFull(waiterButtonsRect);
+            waiterButtonsRect.offsetMin = new Vector2(0f, 18f);
+            waiterButtonsRect.offsetMax = new Vector2(0f, -144f);
+
+            Button waiterMoveSpeedButton = EnsureButton(waiterButtonsRoot, "MoveSpeedUpgradeButton");
+            LayoutButtonStack(Rect(waiterMoveSpeedButton.gameObject), 0, 5);
+            Text waiterMoveSpeedLabel = EnsureText(waiterMoveSpeedButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterMoveSpeedLabelRect = Rect(waiterMoveSpeedLabel.gameObject);
+            StretchFull(waiterMoveSpeedLabelRect);
+            waiterMoveSpeedLabelRect.offsetMin = new Vector2(18f, 10f);
+            waiterMoveSpeedLabelRect.offsetMax = new Vector2(-18f, -10f);
+            waiterMoveSpeedLabel.raycastTarget = false;
+            waiterMoveSpeedLabel.text = GetWaiterMoveLabel();
+
+            Button waiterTakeOrderButton = EnsureButton(waiterButtonsRoot, "TakeOrderUpgradeButton");
+            LayoutButtonStack(Rect(waiterTakeOrderButton.gameObject), 1, 5);
+            Text waiterTakeOrderLabel = EnsureText(waiterTakeOrderButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterTakeOrderLabelRect = Rect(waiterTakeOrderLabel.gameObject);
+            StretchFull(waiterTakeOrderLabelRect);
+            waiterTakeOrderLabelRect.offsetMin = new Vector2(18f, 10f);
+            waiterTakeOrderLabelRect.offsetMax = new Vector2(-18f, -10f);
+            waiterTakeOrderLabel.raycastTarget = false;
+            waiterTakeOrderLabel.text = GetWaiterTakeOrderLabel();
+
+            Button waiterSubmitOrderButton = EnsureButton(waiterButtonsRoot, "SubmitOrderUpgradeButton");
+            LayoutButtonStack(Rect(waiterSubmitOrderButton.gameObject), 2, 5);
+            Text waiterSubmitOrderLabel = EnsureText(waiterSubmitOrderButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterSubmitOrderLabelRect = Rect(waiterSubmitOrderLabel.gameObject);
+            StretchFull(waiterSubmitOrderLabelRect);
+            waiterSubmitOrderLabelRect.offsetMin = new Vector2(18f, 10f);
+            waiterSubmitOrderLabelRect.offsetMax = new Vector2(-18f, -10f);
+            waiterSubmitOrderLabel.raycastTarget = false;
+            waiterSubmitOrderLabel.text = GetWaiterSubmitLabel();
+
+            Button waiterPickupButton = EnsureButton(waiterButtonsRoot, "PickupUpgradeButton");
+            LayoutButtonStack(Rect(waiterPickupButton.gameObject), 3, 5);
+            Text waiterPickupLabel = EnsureText(waiterPickupButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterPickupLabelRect = Rect(waiterPickupLabel.gameObject);
+            StretchFull(waiterPickupLabelRect);
+            waiterPickupLabelRect.offsetMin = new Vector2(18f, 10f);
+            waiterPickupLabelRect.offsetMax = new Vector2(-18f, -10f);
+            waiterPickupLabel.raycastTarget = false;
+            waiterPickupLabel.text = GetWaiterPickupLabel();
+
+            Button waiterCharismaButton = EnsureButton(waiterButtonsRoot, "CharismaUpgradeButton");
+            LayoutButtonStack(Rect(waiterCharismaButton.gameObject), 4, 5);
+            Text waiterCharismaLabel = EnsureText(waiterCharismaButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterCharismaLabelRect = Rect(waiterCharismaLabel.gameObject);
+            StretchFull(waiterCharismaLabelRect);
+            waiterCharismaLabelRect.offsetMin = new Vector2(18f, 10f);
+            waiterCharismaLabelRect.offsetMax = new Vector2(-18f, -10f);
+            waiterCharismaLabel.raycastTarget = false;
+            waiterCharismaLabel.text = GetWaiterCharismaLabel();
+
             Button closeButton = EnsureButton(upgradesPanel, "CloseButton");
             RectTransform closeButtonRect = Rect(closeButton.gameObject);
             closeButtonRect.anchorMin = new Vector2(1f, 1f);
             closeButtonRect.anchorMax = new Vector2(1f, 1f);
             closeButtonRect.pivot = new Vector2(1f, 1f);
-            closeButtonRect.anchoredPosition = new Vector2(-8f, 48f);
-            closeButtonRect.sizeDelta = new Vector2(92f, 58f);
-            Text closeLabel = EnsureText(closeButton.gameObject, "Label", 32, TextAnchor.MiddleCenter);
+            closeButtonRect.anchoredPosition = new Vector2(-12f, -12f);
+            closeButtonRect.sizeDelta = new Vector2(68f, 46f);
+            closeButton.GetComponent<Image>().color = new Color(0.19f, 0.23f, 0.28f, 0.98f);
+            Text closeLabel = EnsureText(closeButton.gameObject, "Label", 26, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform closeLabelRect = Rect(closeLabel.gameObject);
             StretchFull(closeLabelRect);
             closeLabel.raycastTarget = false;
             closeLabel.text = "X";
+
+            GameObject menuPanel = EnsureUiObject(safeAreaRoot, "MenuPanel");
+            SetupPanel(menuPanel, new Color(0.06f, 0.08f, 0.11f, 0.98f), true);
+            RectTransform menuPanelRect = Rect(menuPanel);
+            StretchFull(menuPanelRect);
+            menuPanel.SetActive(false);
+
+            Button menuCloseButton = EnsureButton(menuPanel, "CloseButton");
+            RectTransform menuCloseRect = Rect(menuCloseButton.gameObject);
+            menuCloseRect.anchorMin = new Vector2(1f, 1f);
+            menuCloseRect.anchorMax = new Vector2(1f, 1f);
+            menuCloseRect.pivot = new Vector2(1f, 1f);
+            menuCloseRect.anchoredPosition = new Vector2(-24f, -24f);
+            menuCloseRect.sizeDelta = new Vector2(180f, 54f);
+            menuCloseButton.GetComponent<Image>().color = new Color(0.19f, 0.23f, 0.28f, 0.98f);
+            Text menuCloseLabel = EnsureText(menuCloseButton.gameObject, "Label", 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform menuCloseLabelRect = Rect(menuCloseLabel.gameObject);
+            StretchFull(menuCloseLabelRect);
+            menuCloseLabel.raycastTarget = false;
+            menuCloseLabel.text = GetMenuCloseButtonLabel();
+
+            Text menuTitleText = EnsureText(menuPanel, "TitleText", 42, TextAnchor.UpperLeft, FontStyle.Bold);
+            menuTitleText.raycastTarget = false;
+            RectTransform menuTitleRect = Rect(menuTitleText.gameObject);
+            menuTitleRect.anchorMin = new Vector2(0f, 1f);
+            menuTitleRect.anchorMax = new Vector2(0f, 1f);
+            menuTitleRect.pivot = new Vector2(0f, 1f);
+            menuTitleRect.anchoredPosition = new Vector2(28f, -24f);
+            menuTitleRect.sizeDelta = new Vector2(780f, 56f);
+            menuTitleText.text = GetMenuPanelTitle();
+
+            Text menuSubtitleText = EnsureText(menuPanel, "SubtitleText", 22, TextAnchor.UpperLeft, FontStyle.Normal);
+            menuSubtitleText.raycastTarget = false;
+            RectTransform menuSubtitleRect = Rect(menuSubtitleText.gameObject);
+            menuSubtitleRect.anchorMin = new Vector2(0f, 1f);
+            menuSubtitleRect.anchorMax = new Vector2(0f, 1f);
+            menuSubtitleRect.pivot = new Vector2(0f, 1f);
+            menuSubtitleRect.anchoredPosition = new Vector2(28f, -84f);
+            menuSubtitleRect.sizeDelta = new Vector2(640f, 34f);
+            menuSubtitleText.text = GetMenuPanelSubtitle();
+
+            GameObject recipeCard = EnsureUiObject(menuPanel, "RecipeCard");
+            SetupPanel(recipeCard, new Color(0.12f, 0.16f, 0.21f, 0.98f));
+            RectTransform recipeCardRect = Rect(recipeCard);
+            recipeCardRect.anchorMin = new Vector2(0.5f, 1f);
+            recipeCardRect.anchorMax = new Vector2(0.5f, 1f);
+            recipeCardRect.pivot = new Vector2(0.5f, 1f);
+            recipeCardRect.anchoredPosition = new Vector2(0f, -148f);
+            recipeCardRect.sizeDelta = new Vector2(1180f, 360f);
+
+            Text recipeTitleText = EnsureText(recipeCard, "TitleText", 34, TextAnchor.UpperLeft, FontStyle.Bold);
+            recipeTitleText.raycastTarget = false;
+            RectTransform recipeTitleRect = Rect(recipeTitleText.gameObject);
+            recipeTitleRect.anchorMin = new Vector2(0f, 1f);
+            recipeTitleRect.anchorMax = new Vector2(1f, 1f);
+            recipeTitleRect.pivot = new Vector2(0f, 1f);
+            recipeTitleRect.offsetMin = new Vector2(28f, -58f);
+            recipeTitleRect.offsetMax = new Vector2(-28f, -16f);
+            recipeTitleText.text = GetWildBoarBurgerRecipeTitle();
+
+            Text recipeDescriptionText = EnsureText(recipeCard, "DescriptionText", 22, TextAnchor.UpperLeft, FontStyle.Normal);
+            recipeDescriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            recipeDescriptionText.verticalOverflow = VerticalWrapMode.Overflow;
+            recipeDescriptionText.raycastTarget = false;
+            RectTransform recipeDescriptionRect = Rect(recipeDescriptionText.gameObject);
+            recipeDescriptionRect.anchorMin = new Vector2(0f, 1f);
+            recipeDescriptionRect.anchorMax = new Vector2(1f, 1f);
+            recipeDescriptionRect.pivot = new Vector2(0f, 1f);
+            recipeDescriptionRect.offsetMin = new Vector2(28f, -136f);
+            recipeDescriptionRect.offsetMax = new Vector2(-28f, -72f);
+            recipeDescriptionText.text = GetWildBoarBurgerRecipeDescription();
+
+            Text recipeUnlockText = EnsureText(recipeCard, "UnlockText", 20, TextAnchor.UpperLeft, FontStyle.Bold);
+            recipeUnlockText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            recipeUnlockText.verticalOverflow = VerticalWrapMode.Overflow;
+            recipeUnlockText.raycastTarget = false;
+            RectTransform recipeUnlockRect = Rect(recipeUnlockText.gameObject);
+            recipeUnlockRect.anchorMin = new Vector2(0f, 1f);
+            recipeUnlockRect.anchorMax = new Vector2(1f, 1f);
+            recipeUnlockRect.pivot = new Vector2(0f, 1f);
+            recipeUnlockRect.offsetMin = new Vector2(28f, -208f);
+            recipeUnlockRect.offsetMax = new Vector2(-28f, -148f);
+            recipeUnlockText.text = GetWildBoarBurgerUnlockText();
+
+            Text recipeStatusText = EnsureText(recipeCard, "StatusText", 20, TextAnchor.UpperLeft, FontStyle.Bold);
+            recipeStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            recipeStatusText.verticalOverflow = VerticalWrapMode.Overflow;
+            recipeStatusText.raycastTarget = false;
+            RectTransform recipeStatusRect = Rect(recipeStatusText.gameObject);
+            recipeStatusRect.anchorMin = new Vector2(0f, 1f);
+            recipeStatusRect.anchorMax = new Vector2(1f, 1f);
+            recipeStatusRect.pivot = new Vector2(0f, 1f);
+            recipeStatusRect.offsetMin = new Vector2(28f, -252f);
+            recipeStatusRect.offsetMax = new Vector2(-28f, -192f);
+            recipeStatusText.text = GetWildBoarBurgerStatusText();
+
+            Button recipeActionButton = EnsureButton(recipeCard, "ActionButton");
+            RectTransform recipeActionRect = Rect(recipeActionButton.gameObject);
+            recipeActionRect.anchorMin = new Vector2(0f, 0f);
+            recipeActionRect.anchorMax = new Vector2(0f, 0f);
+            recipeActionRect.pivot = new Vector2(0f, 0f);
+            recipeActionRect.anchoredPosition = new Vector2(28f, 28f);
+            recipeActionRect.sizeDelta = new Vector2(320f, 66f);
+            recipeActionButton.GetComponent<Image>().color = new Color(0.23f, 0.5f, 0.31f, 0.98f);
+            Text recipeActionLabel = EnsureText(recipeActionButton.gameObject, "Label", 24, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform recipeActionLabelRect = Rect(recipeActionLabel.gameObject);
+            StretchFull(recipeActionLabelRect);
+            recipeActionLabel.raycastTarget = false;
+            recipeActionLabel.text = GetWildBoarBurgerActionLabel();
 
             GameObject notificationPanel = EnsureUiObject(safeAreaRoot, "NotificationPanel");
             SetupPanel(notificationPanel, new Color(0.12f, 0.16f, 0.21f, 0.94f));
@@ -178,9 +494,9 @@ namespace IdleRestaurant.Editor
             notificationRect.anchorMax = new Vector2(0.5f, 1f);
             notificationRect.pivot = new Vector2(0.5f, 1f);
             notificationRect.anchoredPosition = new Vector2(0f, -18f);
-            notificationRect.sizeDelta = new Vector2(620f, 64f);
+            notificationRect.sizeDelta = new Vector2(660f, 72f);
 
-            Text notificationText = EnsureText(notificationPanel, "NotificationText", 20, TextAnchor.MiddleCenter);
+            Text notificationText = EnsureText(notificationPanel, "NotificationText", 19, TextAnchor.MiddleCenter, FontStyle.Bold);
             notificationText.horizontalOverflow = HorizontalWrapMode.Wrap;
             notificationText.verticalOverflow = VerticalWrapMode.Overflow;
             notificationText.raycastTarget = false;
@@ -202,9 +518,9 @@ namespace IdleRestaurant.Editor
             popupCardRect.anchorMax = new Vector2(0.5f, 0.5f);
             popupCardRect.pivot = new Vector2(0.5f, 0.5f);
             popupCardRect.anchoredPosition = Vector2.zero;
-            popupCardRect.sizeDelta = new Vector2(760f, 420f);
+            popupCardRect.sizeDelta = new Vector2(760f, 428f);
 
-            Text popupTitleText = EnsureText(popupCard, "TitleText", 34, TextAnchor.UpperCenter);
+            Text popupTitleText = EnsureText(popupCard, "TitleText", 34, TextAnchor.UpperCenter, FontStyle.Bold);
             popupTitleText.raycastTarget = false;
             RectTransform popupTitleRect = Rect(popupTitleText.gameObject);
             popupTitleRect.anchorMin = new Vector2(0f, 1f);
@@ -212,9 +528,9 @@ namespace IdleRestaurant.Editor
             popupTitleRect.pivot = new Vector2(0.5f, 1f);
             popupTitleRect.anchoredPosition = new Vector2(0f, -24f);
             popupTitleRect.sizeDelta = new Vector2(0f, 60f);
-            popupTitleText.text = "Offline Income";
+            popupTitleText.text = LocalizationService.Get("common.offline.title");
 
-            Text popupBodyText = EnsureText(popupCard, "BodyText", 24, TextAnchor.UpperCenter);
+            Text popupBodyText = EnsureText(popupCard, "BodyText", 23, TextAnchor.UpperCenter, FontStyle.Normal);
             popupBodyText.horizontalOverflow = HorizontalWrapMode.Wrap;
             popupBodyText.verticalOverflow = VerticalWrapMode.Overflow;
             popupBodyText.raycastTarget = false;
@@ -231,9 +547,10 @@ namespace IdleRestaurant.Editor
             popupClaimRect.anchorMax = new Vector2(0.5f, 0f);
             popupClaimRect.pivot = new Vector2(0.5f, 0f);
             popupClaimRect.anchoredPosition = new Vector2(0f, 24f);
-            popupClaimRect.sizeDelta = new Vector2(420f, 86f);
+            popupClaimRect.sizeDelta = new Vector2(440f, 80f);
+            popupClaimButton.GetComponent<Image>().color = new Color(0.23f, 0.47f, 0.32f, 0.98f);
 
-            Text popupClaimLabel = EnsureText(popupClaimButton.gameObject, "Label", 28, TextAnchor.MiddleCenter);
+            Text popupClaimLabel = EnsureText(popupClaimButton.gameObject, "Label", 26, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform popupClaimLabelRect = Rect(popupClaimLabel.gameObject);
             StretchFull(popupClaimLabelRect);
             popupClaimLabel.raycastTarget = false;
@@ -247,17 +564,30 @@ namespace IdleRestaurant.Editor
             serializedHud.FindProperty("runtimeCanvas").objectReferenceValue = canvasObject.GetComponent<Canvas>();
             serializedHud.FindProperty("safeAreaRoot").objectReferenceValue = safeAreaRoot.GetComponent<RectTransform>();
             serializedHud.FindProperty("statsPanel").objectReferenceValue = statsPanelRect;
+            serializedHud.FindProperty("statsIcon").objectReferenceValue = statsIcon;
             serializedHud.FindProperty("statsText").objectReferenceValue = statsText;
+            serializedHud.FindProperty("settingsButton").objectReferenceValue = settingsButton;
+            serializedHud.FindProperty("settingsButtonText").objectReferenceValue = settingsButtonLabel;
+            serializedHud.FindProperty("settingsPanel").objectReferenceValue = settingsPanelRect;
+            serializedHud.FindProperty("settingsTitleText").objectReferenceValue = settingsTitleText;
+            serializedHud.FindProperty("languageLabelText").objectReferenceValue = languageTitleText;
+            serializedHud.FindProperty("languageButton").objectReferenceValue = languageButton;
+            serializedHud.FindProperty("languageButtonText").objectReferenceValue = languageButtonLabel;
+            serializedHud.FindProperty("soundLabelText").objectReferenceValue = soundLabelText;
+            serializedHud.FindProperty("soundToggleButton").objectReferenceValue = soundToggleButton;
+            serializedHud.FindProperty("soundToggleButtonText").objectReferenceValue = soundToggleLabel;
+            serializedHud.FindProperty("soundToggleButtonIcon").objectReferenceValue = soundToggleIcon;
             serializedHud.FindProperty("actionBarPanel").objectReferenceValue = actionBarRect;
             serializedHud.FindProperty("upgradesToggleButton").objectReferenceValue = upgradesToggleButton;
             serializedHud.FindProperty("upgradesToggleButtonText").objectReferenceValue = toggleLabel;
-            serializedHud.FindProperty("waiterPriorityButton").objectReferenceValue = priorityModeButton;
-            serializedHud.FindProperty("waiterPriorityButtonText").objectReferenceValue = priorityLabel;
+            serializedHud.FindProperty("menuButton").objectReferenceValue = menuButton;
+            serializedHud.FindProperty("menuButtonText").objectReferenceValue = menuLabel;
             serializedHud.FindProperty("upgradesBackdropImage").objectReferenceValue = upgradesBackdrop.GetComponent<Image>();
             serializedHud.FindProperty("upgradesBackdropButton").objectReferenceValue = upgradesBackdropButton;
             serializedHud.FindProperty("upgradesPanel").objectReferenceValue = upgradesRect;
             serializedHud.FindProperty("upgradesCloseButton").objectReferenceValue = closeButton;
             serializedHud.FindProperty("upgradesCloseButtonText").objectReferenceValue = closeLabel;
+            serializedHud.FindProperty("upgradesMainContent").objectReferenceValue = mainContentRect;
             serializedHud.FindProperty("tableUpgradeButton").objectReferenceValue = tableButton;
             serializedHud.FindProperty("tableUpgradeButtonText").objectReferenceValue = tableLabel;
             serializedHud.FindProperty("waiterUpgradeButton").objectReferenceValue = waiterButton;
@@ -266,6 +596,32 @@ namespace IdleRestaurant.Editor
             serializedHud.FindProperty("kitchenUpgradeButtonText").objectReferenceValue = kitchenLabel;
             serializedHud.FindProperty("barUpgradeButton").objectReferenceValue = barButton;
             serializedHud.FindProperty("barUpgradeButtonText").objectReferenceValue = barLabel;
+            serializedHud.FindProperty("waiterDetailsContent").objectReferenceValue = waiterDetailsRect;
+            serializedHud.FindProperty("waiterDetailsBackButton").objectReferenceValue = waiterBackButton;
+            serializedHud.FindProperty("waiterDetailsBackButtonText").objectReferenceValue = waiterBackLabel;
+            serializedHud.FindProperty("waiterDetailsTitleText").objectReferenceValue = waiterTitleText;
+            serializedHud.FindProperty("waiterDetailsSummaryText").objectReferenceValue = waiterSummaryText;
+            serializedHud.FindProperty("waiterMoveSpeedUpgradeButton").objectReferenceValue = waiterMoveSpeedButton;
+            serializedHud.FindProperty("waiterMoveSpeedUpgradeButtonText").objectReferenceValue = waiterMoveSpeedLabel;
+            serializedHud.FindProperty("waiterTakeOrderUpgradeButton").objectReferenceValue = waiterTakeOrderButton;
+            serializedHud.FindProperty("waiterTakeOrderUpgradeButtonText").objectReferenceValue = waiterTakeOrderLabel;
+            serializedHud.FindProperty("waiterSubmitOrderUpgradeButton").objectReferenceValue = waiterSubmitOrderButton;
+            serializedHud.FindProperty("waiterSubmitOrderUpgradeButtonText").objectReferenceValue = waiterSubmitOrderLabel;
+            serializedHud.FindProperty("waiterPickupUpgradeButton").objectReferenceValue = waiterPickupButton;
+            serializedHud.FindProperty("waiterPickupUpgradeButtonText").objectReferenceValue = waiterPickupLabel;
+            serializedHud.FindProperty("waiterCharismaUpgradeButton").objectReferenceValue = waiterCharismaButton;
+            serializedHud.FindProperty("waiterCharismaUpgradeButtonText").objectReferenceValue = waiterCharismaLabel;
+            serializedHud.FindProperty("menuPanel").objectReferenceValue = menuPanelRect;
+            serializedHud.FindProperty("menuCloseButton").objectReferenceValue = menuCloseButton;
+            serializedHud.FindProperty("menuCloseButtonText").objectReferenceValue = menuCloseLabel;
+            serializedHud.FindProperty("menuTitleText").objectReferenceValue = menuTitleText;
+            serializedHud.FindProperty("menuSubtitleText").objectReferenceValue = menuSubtitleText;
+            serializedHud.FindProperty("menuRecipeTitleText").objectReferenceValue = recipeTitleText;
+            serializedHud.FindProperty("menuRecipeDescriptionText").objectReferenceValue = recipeDescriptionText;
+            serializedHud.FindProperty("menuRecipeUnlockText").objectReferenceValue = recipeUnlockText;
+            serializedHud.FindProperty("menuRecipeStatusText").objectReferenceValue = recipeStatusText;
+            serializedHud.FindProperty("menuRecipeActionButton").objectReferenceValue = recipeActionButton;
+            serializedHud.FindProperty("menuRecipeActionButtonText").objectReferenceValue = recipeActionLabel;
             serializedHud.FindProperty("notificationPanelImage").objectReferenceValue = notificationPanel.GetComponent<Image>();
             serializedHud.FindProperty("notificationText").objectReferenceValue = notificationText;
             serializedHud.FindProperty("offlinePopupOverlayImage").objectReferenceValue = offlinePopupOverlay.GetComponent<Image>();
@@ -333,7 +689,7 @@ namespace IdleRestaurant.Editor
             }
         }
 
-        private static void SetupPanel(GameObject panelObject, Color color)
+        private static void SetupPanel(GameObject panelObject, Color color, bool useSimpleBackground = false)
         {
             Image image = panelObject.GetComponent<Image>();
             if (image == null)
@@ -341,7 +697,12 @@ namespace IdleRestaurant.Editor
                 image = panelObject.AddComponent<Image>();
             }
 
-            image.color = color;
+            ApplyPanelStyle(image, color);
+            if (useSimpleBackground)
+            {
+                image.sprite = null;
+                image.type = Image.Type.Simple;
+            }
         }
 
         private static Button EnsureButton(GameObject parent, string name)
@@ -353,23 +714,66 @@ namespace IdleRestaurant.Editor
                 image = buttonObject.AddComponent<Image>();
             }
 
-            image.color = new Color(0.22f, 0.24f, 0.27f, 0.96f);
-
             Button button = buttonObject.GetComponent<Button>();
             if (button == null)
             {
                 button = buttonObject.AddComponent<Button>();
             }
 
-            button.targetGraphic = image;
-
-            ColorBlock colors = button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(0.92f, 0.92f, 0.92f, 1f);
-            colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
-            colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.9f);
-            button.colors = colors;
+            ApplyButtonStyle(button, new Color(0.19f, 0.23f, 0.28f, 0.98f));
             return button;
+        }
+
+        private static Slider EnsureSlider(GameObject sliderObject)
+        {
+            Slider slider = sliderObject.GetComponent<Slider>();
+            if (slider == null)
+            {
+                slider = sliderObject.AddComponent<Slider>();
+            }
+
+            Image background = EnsureImageChild(sliderObject, "Background", new Color(0.16f, 0.18f, 0.2f, 0.98f));
+            RectTransform backgroundRect = Rect(background.gameObject);
+            StretchFull(backgroundRect);
+            backgroundRect.offsetMin = new Vector2(0f, 10f);
+            backgroundRect.offsetMax = new Vector2(0f, -10f);
+
+            GameObject fillArea = EnsureUiObject(sliderObject, "Fill Area");
+            RectTransform fillAreaRect = Rect(fillArea);
+            StretchFull(fillAreaRect);
+            fillAreaRect.offsetMin = new Vector2(12f, 10f);
+            fillAreaRect.offsetMax = new Vector2(-12f, -10f);
+
+            Image fill = EnsureImageChild(fillArea, "Fill", new Color(0.27f, 0.55f, 0.34f, 1f));
+            RectTransform fillRect = Rect(fill.gameObject);
+            StretchFull(fillRect);
+
+            GameObject handleSlideArea = EnsureUiObject(sliderObject, "Handle Slide Area");
+            RectTransform handleAreaRect = Rect(handleSlideArea);
+            StretchFull(handleAreaRect);
+            handleAreaRect.offsetMin = new Vector2(12f, 0f);
+            handleAreaRect.offsetMax = new Vector2(-12f, 0f);
+
+            Image handle = EnsureImageChild(handleSlideArea, "Handle", new Color(0.95f, 0.96f, 0.97f, 1f));
+            RectTransform handleRect = Rect(handle.gameObject);
+            handleRect.anchorMin = new Vector2(0f, 0.5f);
+            handleRect.anchorMax = new Vector2(0f, 0.5f);
+            handleRect.pivot = new Vector2(0.5f, 0.5f);
+            handleRect.anchoredPosition = Vector2.zero;
+            handleRect.sizeDelta = new Vector2(22f, 22f);
+
+            background.raycastTarget = false;
+            fill.raycastTarget = false;
+            handle.raycastTarget = true;
+
+            slider.fillRect = fillRect;
+            slider.handleRect = handleRect;
+            slider.targetGraphic = handle;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.wholeNumbers = false;
+            return slider;
         }
 
         private static void LayoutButtonStack(RectTransform rect, int rowIndex, int totalRows)
@@ -380,8 +784,8 @@ namespace IdleRestaurant.Editor
             rect.anchorMin = new Vector2(0f, normalizedBottom);
             rect.anchorMax = new Vector2(1f, normalizedTop);
 
-            float edgePadding = 12f;
-            float gap = 8f;
+            float edgePadding = 18f;
+            float gap = 10f;
             float top = rowIndex == 0 ? -edgePadding : -(gap * 0.5f);
             float bottom = rowIndex >= totalRows - 1 ? edgePadding : gap * 0.5f;
             float left = edgePadding;
@@ -390,7 +794,7 @@ namespace IdleRestaurant.Editor
             rect.offsetMax = new Vector2(right, top);
         }
 
-        private static Text EnsureText(GameObject parent, string name, int fontSize, TextAnchor alignment)
+        private static Text EnsureText(GameObject parent, string name, int fontSize, TextAnchor alignment, FontStyle fontStyle)
         {
             GameObject textObject = EnsureUiObject(parent, name);
             Text text = textObject.GetComponent<Text>();
@@ -399,11 +803,248 @@ namespace IdleRestaurant.Editor
                 text = textObject.AddComponent<Text>();
             }
 
+            ApplyTextStyle(text, fontSize, alignment, new Color(0.98f, 0.98f, 0.98f, 1f), fontStyle);
+            return text;
+        }
+
+        private static Image EnsureImageChild(GameObject parent, string name, Color color)
+        {
+            GameObject imageObject = EnsureUiObject(parent, name);
+            Image image = imageObject.GetComponent<Image>();
+            if (image == null)
+            {
+                image = imageObject.AddComponent<Image>();
+            }
+
+            ApplyPanelStyle(image, color);
+            return image;
+        }
+
+        private static void SetButtonIcon(Button button, string resourcePath, Vector2 size)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            GameObject iconObject = EnsureUiObject(button.gameObject, "Icon");
+            RectTransform iconRect = Rect(iconObject);
+            iconRect.SetParent(button.transform, false);
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = size;
+
+            Image iconImage = iconObject.GetComponent<Image>();
+            if (iconImage == null)
+            {
+                iconImage = iconObject.AddComponent<Image>();
+            }
+
+            iconImage.sprite = Resources.Load<Sprite>(resourcePath);
+            iconImage.type = Image.Type.Simple;
+            iconImage.preserveAspect = true;
+            iconImage.color = new Color(0.97f, 0.98f, 1f, 1f);
+            iconImage.raycastTarget = false;
+            iconObject.transform.SetAsLastSibling();
+        }
+
+        private static void ApplyPanelStyle(Image image, Color color)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = GetUiSprite();
+            image.type = image.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            image.raycastTarget = true;
+            image.color = color;
+        }
+
+        private static void ApplyButtonStyle(Button button, Color backgroundColor)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            Image image = button.GetComponent<Image>();
+            if (image == null)
+            {
+                image = button.gameObject.AddComponent<Image>();
+            }
+
+            image.sprite = GetUiSprite();
+            image.type = image.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            image.raycastTarget = true;
+            image.color = backgroundColor;
+            button.targetGraphic = image;
+
+            ColorBlock colors = button.colors;
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.1f;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 1f, 1f, 0.96f);
+            colors.pressedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
+            colors.selectedColor = new Color(0.94f, 0.94f, 0.94f, 1f);
+            colors.disabledColor = new Color(0.58f, 0.58f, 0.62f, 0.9f);
+            button.colors = colors;
+        }
+
+        private static void ApplyTextStyle(Text text, int fontSize, TextAnchor alignment, Color color, FontStyle fontStyle)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = fontSize;
+            text.fontStyle = fontStyle;
             text.alignment = alignment;
-            text.color = new Color(0.98f, 0.98f, 0.98f, 1f);
-            return text;
+            text.supportRichText = true;
+            text.color = color;
+        }
+
+        private static Sprite GetUiSprite()
+        {
+            return Resources.Load<Sprite>("UI/RoundedRect");
+        }
+
+        private static string GetWaiterEntryLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Официант 1 (Анатолий)\nОткрыть характеристики"
+                : "Waiter 1 (Anatoly)\nOpen stats";
+        }
+
+        private static string GetWaiterBackLabel()
+        {
+            return LocalizationService.IsRussian ? "Назад" : "Back";
+        }
+
+        private static string GetWaiterDetailsTitle()
+        {
+            return LocalizationService.IsRussian ? "Официант 1 (Анатолий)" : "Waiter 1 (Anatoly)";
+        }
+
+        private static string GetWaiterSummary()
+        {
+            return LocalizationService.IsRussian
+                ? "Передвижение x1.00  Принятие x1.00\nПробитие x1.00  Забор x1.00\nЧаевые x1.00  Лояльность +0"
+                : "Move x1.00  Taking x1.00\nInput x1.00  Pickup x1.00\nTips x1.00  Loyalty +0";
+        }
+
+        private static string GetWaiterMoveLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Передвижение ур.0  Купить $90\nСкорость x1.00"
+                : "Movement Lv.0  Buy $90\nSpeed x1.00";
+        }
+
+        private static string GetWaiterTakeOrderLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Принятие заказа ур.0  Купить $80\nСкорость x1.00"
+                : "Taking order Lv.0  Buy $80\nSpeed x1.00";
+        }
+
+        private static string GetWaiterSubmitLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Пробитие заказа ур.0  Купить $85\nСкорость x1.00"
+                : "Submitting order Lv.0  Buy $85\nSpeed x1.00";
+        }
+
+        private static string GetWaiterPickupLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Забор заказа ур.0  Купить $95\nСкорость x1.00"
+                : "Picking up Lv.0  Buy $95\nSpeed x1.00";
+        }
+
+        private static string GetWaiterCharismaLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Обаятельность ур.0  Купить $110\nЧаевые x1.00  Лояльность +0"
+                : "Charisma Lv.0  Buy $110\nTips x1.00  Loyalty +0";
+        }
+
+        private static string GetMenuButtonLabel()
+        {
+            return string.Empty;
+        }
+
+        private static string BuildMoneyChipLabel(int moneyAmount)
+        {
+            return "$" + Mathf.Max(0, moneyAmount);
+        }
+
+        private static string GetInitialWaiterStatusLine()
+        {
+            string idleLabel = LocalizationService.Get("rest.waiter.task.idle");
+            return LocalizationService.IsRussian ? "Официант: " + idleLabel : "Waiter: " + idleLabel;
+        }
+
+        private static string GetMenuCloseButtonLabel()
+        {
+            return LocalizationService.IsRussian ? "Закрыть" : "Close";
+        }
+
+        private static string GetMenuPanelTitle()
+        {
+            return LocalizationService.IsRussian ? "Книга рецептов" : "Recipe book";
+        }
+
+        private static string GetMenuPanelSubtitle()
+        {
+            return LocalizationService.IsRussian ? "Рецепты" : "Recipes";
+        }
+
+        private static string GetWildBoarBurgerRecipeTitle()
+        {
+            return LocalizationService.IsRussian ? "Бургер с мясом дикого кабана" : "Wild boar burger";
+        }
+
+        private static string GetWildBoarBurgerRecipeDescription()
+        {
+            return LocalizationService.IsRussian
+                ? "Сытный бургер с котлетой из дикого кабана. После изучения рецепт останется доступным в книге рецептов."
+                : "A hearty burger with a wild boar patty. Once studied, the recipe stays available in the recipe book.";
+        }
+
+        private static string GetWildBoarBurgerUnlockText()
+        {
+            return LocalizationService.IsRussian
+                ? "Требование: пройти 3 уровень приключений. Лучший результат: 0."
+                : "Requirement: clear adventure level 3. Best result: 0.";
+        }
+
+        private static string GetWildBoarBurgerStatusText()
+        {
+            return LocalizationService.IsRussian ? "Статус: закрыто" : "Status: locked";
+        }
+
+        private static string GetWildBoarBurgerActionLabel()
+        {
+            return LocalizationService.IsRussian ? "Нужно пройти 3 уровень" : "Need level 3";
+        }
+
+        private static string GetSettingsTitle()
+        {
+            return LocalizationService.IsRussian ? "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438" : "Settings";
+        }
+
+        private static string GetLanguageLabel()
+        {
+            return LocalizationService.IsRussian ? "\u042f\u0437\u044b\u043a" : "Language";
+        }
+
+        private static string GetSoundLabel()
+        {
+            return LocalizationService.IsRussian ? "\u0417\u0432\u0443\u043a" : "Sound";
         }
 
         private static RectTransform Rect(GameObject go)
