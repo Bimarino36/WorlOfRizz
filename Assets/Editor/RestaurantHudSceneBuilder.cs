@@ -44,24 +44,33 @@ namespace IdleRestaurant.Editor
             statsPanelRect.anchorMax = new Vector2(0f, 1f);
             statsPanelRect.pivot = new Vector2(0f, 1f);
             statsPanelRect.anchoredPosition = new Vector2(20f, -20f);
-            statsPanelRect.sizeDelta = new Vector2(440f, 236f);
+            statsPanelRect.sizeDelta = new Vector2(188f, 60f);
 
-            Text statsText = EnsureText(statsPanel, "StatsText", 18, TextAnchor.UpperLeft, FontStyle.Normal);
+            Image statsIcon = EnsureImageChild(statsPanel, "Icon", new Color(0.98f, 0.89f, 0.38f, 1f));
+            statsIcon.sprite = Resources.Load<Sprite>("UI/Icons/CoinStack");
+            statsIcon.type = Image.Type.Simple;
+            statsIcon.preserveAspect = true;
+            statsIcon.raycastTarget = false;
+            RectTransform statsIconRect = Rect(statsIcon.gameObject);
+            statsIconRect.anchorMin = new Vector2(0f, 0.5f);
+            statsIconRect.anchorMax = new Vector2(0f, 0.5f);
+            statsIconRect.pivot = new Vector2(0f, 0.5f);
+            statsIconRect.anchoredPosition = new Vector2(14f, 0f);
+            statsIconRect.sizeDelta = new Vector2(28f, 28f);
+
+            Text statsText = EnsureText(statsPanel, "StatsText", 28, TextAnchor.MiddleLeft, FontStyle.Bold);
             statsText.horizontalOverflow = HorizontalWrapMode.Wrap;
             statsText.verticalOverflow = VerticalWrapMode.Overflow;
             statsText.raycastTarget = false;
+            statsText.resizeTextForBestFit = true;
+            statsText.resizeTextMinSize = 16;
+            statsText.resizeTextMaxSize = 28;
             RectTransform statsTextRect = Rect(statsText.gameObject);
             statsTextRect.anchorMin = new Vector2(0f, 0f);
             statsTextRect.anchorMax = new Vector2(1f, 1f);
-            statsTextRect.offsetMin = new Vector2(20f, 18f);
-            statsTextRect.offsetMax = new Vector2(-20f, -18f);
-            statsText.text =
-                "<size=18><color=#B6C5D9>" + LocalizationService.Get("common.restaurant") + "</color></size>\n" +
-                "<size=34><b>" + LocalizationService.Format("rest.stats.cash", 0) + "</b></size>\n" +
-                LocalizationService.Format("rest.stats.guests_queue", 0, 0) + "\n" +
-                LocalizationService.Format("rest.stats.served_walkouts", 0, 0) + "\n" +
-                LocalizationService.Format("rest.stats.queue_loyalty", 0, 0) + "\n" +
-                GetInitialWaiterStatusLine();
+            statsTextRect.offsetMin = new Vector2(52f, 0f);
+            statsTextRect.offsetMax = new Vector2(-14f, 0f);
+            statsText.text = BuildMoneyChipLabel(0);
 
             Button settingsButton = EnsureButton(safeAreaRoot, "SettingsButton");
             RectTransform settingsButtonRect = Rect(settingsButton.gameObject);
@@ -555,6 +564,7 @@ namespace IdleRestaurant.Editor
             serializedHud.FindProperty("runtimeCanvas").objectReferenceValue = canvasObject.GetComponent<Canvas>();
             serializedHud.FindProperty("safeAreaRoot").objectReferenceValue = safeAreaRoot.GetComponent<RectTransform>();
             serializedHud.FindProperty("statsPanel").objectReferenceValue = statsPanelRect;
+            serializedHud.FindProperty("statsIcon").objectReferenceValue = statsIcon;
             serializedHud.FindProperty("statsText").objectReferenceValue = statsText;
             serializedHud.FindProperty("settingsButton").objectReferenceValue = settingsButton;
             serializedHud.FindProperty("settingsButtonText").objectReferenceValue = settingsButtonLabel;
@@ -965,6 +975,11 @@ namespace IdleRestaurant.Editor
         private static string GetMenuButtonLabel()
         {
             return string.Empty;
+        }
+
+        private static string BuildMoneyChipLabel(int moneyAmount)
+        {
+            return "$" + Mathf.Max(0, moneyAmount);
         }
 
         private static string GetInitialWaiterStatusLine()

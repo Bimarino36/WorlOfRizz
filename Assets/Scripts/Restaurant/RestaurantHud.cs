@@ -26,6 +26,7 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private Canvas runtimeCanvas;
         [SerializeField] private RectTransform safeAreaRoot;
         [SerializeField] private RectTransform statsPanel;
+        [SerializeField] private Image statsIcon;
         [SerializeField] private Text statsText;
         [SerializeField] private Button settingsButton;
         [SerializeField] private Text settingsButtonText;
@@ -234,6 +235,11 @@ namespace IdleRestaurant.Gameplay
             if (statsText == null)
             {
                 statsText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/StatsPanel/StatsText");
+            }
+
+            if (statsIcon == null)
+            {
+                statsIcon = FindComponent<Image>("RuntimeHudCanvas/SafeAreaRoot/StatsPanel/Icon");
             }
 
             if (settingsButton == null)
@@ -732,14 +738,11 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            string waiterState = runtime.Waiter != null ? runtime.Waiter.CurrentTaskLabel : LocalizationService.Get("common.status.missing");
-            statsText.text =
-                "<size=18><color=#B6C5D9>" + LocalizationService.Get("common.restaurant") + "</color></size>\n" +
-                "<size=34><b>" + LocalizationService.Format("rest.stats.cash", runtime.TotalMoney) + "</b></size>\n" +
-                "<size=16>" + LocalizationService.Format("rest.stats.guests_queue", runtime.ActiveGuestCount, runtime.QueueGuestCount) + "</size>\n" +
-                "<size=16>" + LocalizationService.Format("rest.stats.served_walkouts", runtime.ServedGuests, runtime.WalkedOutGuests) + "</size>\n" +
-                "<size=16>" + LocalizationService.Format("rest.stats.queue_loyalty", runtime.QueueWalkedOutGuests, runtime.LoyaltyScore) + "</size>\n" +
-                "<size=16><color=#E7F1FF>" + BuildWaiterStatusLine(waiterState) + "</color></size>";
+            statsText.text = BuildMoneyChipLabel(runtime.TotalMoney);
+            if (statsIcon != null)
+            {
+                statsIcon.color = new Color(0.98f, 0.89f, 0.38f, 1f);
+            }
         }
 
         private void UpdateSettingsButton()
@@ -1685,6 +1688,11 @@ namespace IdleRestaurant.Gameplay
         private static string BuildWaiterStatusLine(string waiterState)
         {
             return LocalizationService.IsRussian ? "Официант: " + waiterState : "Waiter: " + waiterState;
+        }
+
+        private static string BuildMoneyChipLabel(int moneyAmount)
+        {
+            return "$" + Mathf.Max(0, moneyAmount);
         }
 
         private static string GetWaiterBackButtonLabel()

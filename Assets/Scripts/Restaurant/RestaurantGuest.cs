@@ -24,6 +24,10 @@ namespace IdleRestaurant.Gameplay
 
         [SerializeField, Min(0.5f)] private float moveSpeed = 1.9f;
         [SerializeField, Min(180f)] private float turnSpeed = 540f;
+        [SerializeField, Min(0.5f)] private float seatApproachTimeout = 4f;
+        [SerializeField, Min(0.25f)] private float seatApproachStallTimeout = 1.1f;
+        [SerializeField, Min(0.001f)] private float seatApproachMovementEpsilon = 0.02f;
+        [SerializeField, Min(0.02f)] private float seatForceDistanceThreshold = 0.12f;
         [SerializeField, Range(0f, 1f)] private float serviceQuality = 1f;
         [SerializeField, Range(0f, 1f)] private float currentUrgencyNormalized;
         [SerializeField] private string waitPhaseLabel = "None";
@@ -41,6 +45,9 @@ namespace IdleRestaurant.Gameplay
         private float waitLimit;
         private float waitDecayStartNormalized;
         private bool allowWalkoutDuringCurrentPhase;
+        private float seatApproachElapsed;
+        private float seatApproachStallElapsed;
+        private Vector3 lastSeatApproachPosition;
 
         private void Awake()
         {
@@ -68,6 +75,7 @@ namespace IdleRestaurant.Gameplay
             hasWalkedOut = false;
             queueTargetPosition = transform.position;
             ClearWaitState();
+            ResetSeatApproachState();
         }
 
         public void BeginQueueing(Vector3 queuePosition)
@@ -77,6 +85,7 @@ namespace IdleRestaurant.Gameplay
             ClearWaitState();
             queueTargetPosition = queuePosition;
             mode = GuestMode.WaitingInQueue;
+            ResetSeatApproachState();
         }
 
         public void RefreshQueuePosition(Vector3 queuePosition)
@@ -95,6 +104,7 @@ namespace IdleRestaurant.Gameplay
             pathMover?.ClearPath();
             currentSeat = seat;
             mode = GuestMode.WalkingToSeat;
+            ResetSeatApproachState();
         }
 
         public void BeginEating(float duration)
@@ -111,6 +121,7 @@ namespace IdleRestaurant.Gameplay
             pathMover?.ClearPath();
             ClearWaitState();
             mode = GuestMode.Leaving;
+            ResetSeatApproachState();
         }
 
         public void BeginOrderWait(float limit, float decayStartNormalized, bool allowWalkout)
@@ -169,16 +180,33 @@ namespace IdleRestaurant.Gameplay
             if (currentSeat == null)
             {
                 mode = GuestMode.WaitingInQueue;
+                ResetSeatApproachState();
                 return;
             }
 
             Vector3 approachPosition = GetSeatApproachPosition();
-            if (!MoveTowards(approachPosition, 0.08f))
+            seatApproachElapsed += Time.deltaTime;
+
+            bool reachedSeat = MoveTowards(approachPosition, 0.08f);
+            float movementDelta = GetPlanarDistance(transform.position, lastSeatApproachPosition);
+            if (movementDelta > seatApproachMovementEpsilon)
             {
+                seatApproachStallElapsed = 0f;
+            }
+            else
+            {
+                seatApproachStallElapsed += Time.deltaTime;
+            }
+
+            lastSeatApproachPosition = transform.position;
+
+            if (reachedSeat)
+            {
+                FinishSeating();
                 return;
             }
 
-            FinishSeating();
+            // Seating watchdog is temporarily disabled until we revisit the pathing fix.
         }
 
         private void UpdateQueueing()
@@ -286,6 +314,13 @@ namespace IdleRestaurant.Gameplay
             waitPhaseLabel = WaitPhase.None.ToString();
         }
 
+        private void ResetSeatApproachState()
+        {
+            seatApproachElapsed = 0f;
+            seatApproachStallElapsed = 0f;
+            lastSeatApproachPosition = transform.position;
+        }
+
         private bool MoveTowards(Vector3 targetPosition, float stopDistance)
         {
             ResolvePathMover();
@@ -374,12 +409,30 @@ namespace IdleRestaurant.Gameplay
             Vector3 seatPosition = currentSeat.SeatPoint.position;
             transform.position = new Vector3(seatPosition.x, transform.position.y, seatPosition.z);
             pathMover?.ClearPath();
+            ResetSeatApproachState();
             currentSeat.MarkGuestSeated();
             mode = GuestMode.Idle;
             if (runtime != null)
             {
                 runtime.NotifyGuestSeated(this);
             }
+        }
+
+        private void ForceSeat()
+        {
+            if (currentSeat == null)
+            {
+                return;
+            }
+
+            FinishSeating();
+        }
+
+        private static float GetPlanarDistance(Vector3 from, Vector3 to)
+        {
+            from.y = 0f;
+            to.y = 0f;
+            return Vector3.Distance(from, to);
         }
 
         private static float EstimateNavMeshOffset(Vector3 targetPosition)

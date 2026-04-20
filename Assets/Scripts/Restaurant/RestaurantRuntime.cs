@@ -1101,6 +1101,7 @@ namespace IdleRestaurant.Gameplay
                     continue;
                 }
 
+                // Shared seating is temporarily disabled.
                 RestaurantSeat seat = tables[tableIndex].GetAvailableSeat();
                 if (seat != null)
                 {

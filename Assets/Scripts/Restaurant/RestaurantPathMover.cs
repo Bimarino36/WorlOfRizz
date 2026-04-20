@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -7,10 +8,15 @@ namespace IdleRestaurant.Gameplay
     public sealed class RestaurantPathMover : MonoBehaviour
     {
         private static readonly Vector3 InvalidVector = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
+        private static readonly List<RestaurantPathMover> ActiveMovers = new List<RestaurantPathMover>();
 
         [SerializeField, Min(0.25f)] private float navMeshSampleDistance = 1.2f;
         [SerializeField, Min(0.02f)] private float waypointReachDistance = 0.08f;
         [SerializeField, Min(0.02f)] private float destinationChangeThreshold = 0.18f;
+        [SerializeField, Min(0.001f)] private float stalledWaypointDistance = 0.01f;
+        [SerializeField, Min(0.05f)] private float characterAvoidanceRadius = 0.24f;
+        [SerializeField, Min(0f)] private float characterAvoidanceStrength = 0.85f;
+        [SerializeField, Min(0.01f)] private float characterAvoidanceMaxPush = 0.09f;
 
         private NavMeshPath navMeshPath;
         private Vector3[] pathCorners = Array.Empty<Vector3>();
@@ -24,6 +30,24 @@ namespace IdleRestaurant.Gameplay
         {
             navMeshPath = new NavMeshPath();
             ClearPath();
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveMovers.Contains(this))
+            {
+                ActiveMovers.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveMovers.Remove(this);
+        }
+
+        private void OnDestroy()
+        {
+            ActiveMovers.Remove(this);
         }
 
         public void ClearPath()
@@ -69,8 +93,18 @@ namespace IdleRestaurant.Gameplay
 
             Vector3 waypoint = GetCurrentWaypoint(currentPosition, stopDistance);
             Vector3 flattenedWaypoint = new Vector3(waypoint.x, currentPosition.y, waypoint.z);
-            transform.position = Vector3.MoveTowards(currentPosition, flattenedWaypoint, moveSpeed * Time.deltaTime);
-            RotateTowards(flattenedWaypoint - currentPosition, turnSpeed);
+            if (PlanarDistanceSqr(currentPosition, flattenedWaypoint) <= stalledWaypointDistance * stalledWaypointDistance
+                && PlanarDistanceSqr(currentPosition, targetPosition) > arrivalDistance * arrivalDistance)
+            {
+                ClearPath();
+                return false;
+            }
+
+            float stepDistance = moveSpeed * Time.deltaTime;
+            Vector3 desiredPosition = Vector3.MoveTowards(currentPosition, flattenedWaypoint, stepDistance);
+            Vector3 nextPosition = ApplyCharacterAvoidance(currentPosition, desiredPosition, stepDistance);
+            transform.position = nextPosition;
+            RotateTowards(nextPosition - currentPosition, turnSpeed);
 
             Vector3 movedPosition = transform.position;
             if (PlanarDistanceSqr(movedPosition, targetPosition) <= arrivalDistance * arrivalDistance)
@@ -167,9 +201,114 @@ namespace IdleRestaurant.Gameplay
                 return true;
             }
 
-            transform.position = Vector3.MoveTowards(currentPosition, targetPosition, moveSpeed * Time.deltaTime);
-            RotateTowards(delta, turnSpeed);
+            float stepDistance = moveSpeed * Time.deltaTime;
+            Vector3 desiredPosition = Vector3.MoveTowards(currentPosition, targetPosition, stepDistance);
+            Vector3 nextPosition = ApplyCharacterAvoidance(currentPosition, desiredPosition, stepDistance);
+            transform.position = nextPosition;
+            RotateTowards(nextPosition - currentPosition, turnSpeed);
             return false;
+        }
+
+        private Vector3 ApplyCharacterAvoidance(Vector3 currentPosition, Vector3 desiredPosition, float maxStepDistance)
+        {
+            if (ActiveMovers.Count <= 1 || maxStepDistance <= 0.0001f)
+            {
+                return desiredPosition;
+            }
+
+            Vector3 desiredDelta = desiredPosition - currentPosition;
+            desiredDelta.y = 0f;
+            if (desiredDelta.sqrMagnitude <= 0.000001f)
+            {
+                return desiredPosition;
+            }
+
+            Vector3 accumulatedPush = Vector3.zero;
+            float combinedRadiusSqrPadding = 0.0001f;
+            for (int i = 0; i < ActiveMovers.Count; i++)
+            {
+                RestaurantPathMover other = ActiveMovers[i];
+                if (other == null || other == this || !other.isActiveAndEnabled || !other.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                Vector3 otherPosition = other.transform.position;
+                if (Mathf.Abs(otherPosition.y - currentPosition.y) > 0.75f)
+                {
+                    continue;
+                }
+
+                otherPosition.y = currentPosition.y;
+                float combinedRadius = Mathf.Max(0.05f, characterAvoidanceRadius + other.characterAvoidanceRadius);
+                Vector3 offset = desiredPosition - otherPosition;
+                offset.y = 0f;
+                float distanceSqr = offset.sqrMagnitude;
+                if (distanceSqr >= combinedRadius * combinedRadius - combinedRadiusSqrPadding)
+                {
+                    continue;
+                }
+
+                float distance = Mathf.Sqrt(Mathf.Max(distanceSqr, 0.000001f));
+                float overlap = Mathf.Max(0f, combinedRadius - distance);
+                Vector3 pushDirection = distance > 0.001f
+                    ? offset / distance
+                    : GetFallbackAvoidanceDirection(desiredDelta);
+                accumulatedPush += pushDirection * overlap;
+            }
+
+            if (accumulatedPush.sqrMagnitude <= 0.000001f)
+            {
+                return desiredPosition;
+            }
+
+            Vector3 desiredDirection = desiredDelta.normalized;
+            Vector3 forwardPush = Vector3.Project(accumulatedPush, desiredDirection);
+            Vector3 lateralPush = accumulatedPush - forwardPush;
+            Vector3 adjustedPush = lateralPush + (forwardPush * 0.25f);
+            adjustedPush = Vector3.ClampMagnitude(
+                adjustedPush * Mathf.Max(0f, characterAvoidanceStrength),
+                Mathf.Min(characterAvoidanceMaxPush, maxStepDistance));
+
+            Vector3 adjustedDelta = desiredDelta + adjustedPush;
+            float forwardDistance = Vector3.Dot(adjustedDelta, desiredDirection);
+            if (forwardDistance < 0f)
+            {
+                adjustedDelta -= desiredDirection * forwardDistance;
+            }
+
+            adjustedDelta = Vector3.ClampMagnitude(adjustedDelta, maxStepDistance);
+            return new Vector3(
+                currentPosition.x + adjustedDelta.x,
+                currentPosition.y,
+                currentPosition.z + adjustedDelta.z);
+        }
+
+        private Vector3 GetFallbackAvoidanceDirection(Vector3 desiredDelta)
+        {
+            Vector3 planarDesired = desiredDelta;
+            planarDesired.y = 0f;
+            if (planarDesired.sqrMagnitude > 0.0001f)
+            {
+                Vector3 side = Vector3.Cross(Vector3.up, planarDesired.normalized);
+                if (side.sqrMagnitude > 0.0001f)
+                {
+                    return side.normalized;
+                }
+            }
+
+            Vector3 planarForward = transform.forward;
+            planarForward.y = 0f;
+            if (planarForward.sqrMagnitude > 0.0001f)
+            {
+                Vector3 side = Vector3.Cross(Vector3.up, planarForward.normalized);
+                if (side.sqrMagnitude > 0.0001f)
+                {
+                    return side.normalized;
+                }
+            }
+
+            return Vector3.right;
         }
 
         private void RotateTowards(Vector3 delta, float turnSpeed)

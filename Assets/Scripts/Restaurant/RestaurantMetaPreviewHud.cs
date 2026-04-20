@@ -161,6 +161,7 @@ namespace IdleRestaurant.Gameplay
             resourceStripRoot.pivot = new Vector2(0.5f, 1f);
             resourceStripRoot.sizeDelta = new Vector2(500f, 52f);
             resourceStripRoot.anchoredPosition = new Vector2(0f, -18f);
+            AlignResourceStripBelowNotifications();
 
             if (resourceStripText == null)
             {
@@ -197,6 +198,28 @@ namespace IdleRestaurant.Gameplay
                 new Vector2(-10f, 0f),
                 new Vector2(112f, 34f),
                 new Color(0.21f, 0.46f, 0.61f, 0.96f));
+        }
+
+        private void AlignResourceStripBelowNotifications()
+        {
+            if (resourceStripRoot == null || safeAreaRoot == null)
+            {
+                return;
+            }
+
+            Transform notificationPanel = safeAreaRoot.Find("NotificationPanel");
+            if (notificationPanel == null || notificationPanel == resourceStripRoot)
+            {
+                return;
+            }
+
+            int notificationIndex = notificationPanel.GetSiblingIndex();
+            int currentIndex = resourceStripRoot.GetSiblingIndex();
+            if (currentIndex > notificationIndex)
+            {
+                int targetIndex = Mathf.Clamp(notificationIndex, 0, Mathf.Max(0, safeAreaRoot.childCount - 1));
+                resourceStripRoot.SetSiblingIndex(targetIndex);
+            }
         }
 
         private void EnsureSpecialOrdersPanel()
@@ -239,6 +262,11 @@ namespace IdleRestaurant.Gameplay
                 titleRect.SetParent(specialOrdersRoot, false);
                 specialOrdersTitleText = titleObject.GetComponent<Text>();
                 ApplyTextStyle(specialOrdersTitleText, 18, TextAnchor.UpperLeft, new Color(0.96f, 0.96f, 0.96f, 1f), FontStyle.Bold);
+                specialOrdersTitleText.resizeTextForBestFit = true;
+                specialOrdersTitleText.resizeTextMinSize = 13;
+                specialOrdersTitleText.resizeTextMaxSize = 18;
+                specialOrdersTitleText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                specialOrdersTitleText.verticalOverflow = VerticalWrapMode.Truncate;
             }
 
             RectTransform specialOrdersTitleRect = specialOrdersTitleText.rectTransform;
@@ -457,9 +485,9 @@ namespace IdleRestaurant.Gameplay
                 RectTransform titleRect = specialOrdersTitleText.rectTransform;
                 titleRect.anchorMin = new Vector2(0f, 1f);
                 titleRect.anchorMax = new Vector2(1f, 1f);
-                titleRect.pivot = new Vector2(0.5f, 1f);
-                titleRect.anchoredPosition = new Vector2(0f, -10f);
-                titleRect.sizeDelta = new Vector2(0f, 24f);
+                titleRect.pivot = new Vector2(0f, 1f);
+                titleRect.offsetMin = new Vector2(18f, -34f);
+                titleRect.offsetMax = new Vector2(-52f, -8f);
             }
 
             if (specialOrdersBodyText != null)
@@ -467,9 +495,9 @@ namespace IdleRestaurant.Gameplay
                 RectTransform bodyRect = specialOrdersBodyText.rectTransform;
                 bodyRect.anchorMin = new Vector2(0f, 1f);
                 bodyRect.anchorMax = new Vector2(1f, 1f);
-                bodyRect.pivot = new Vector2(0.5f, 1f);
-                bodyRect.anchoredPosition = new Vector2(0f, -44f);
-                bodyRect.sizeDelta = new Vector2(0f, GetContractsIntroHeight());
+                bodyRect.pivot = new Vector2(0f, 1f);
+                bodyRect.offsetMin = new Vector2(18f, -(44f + GetContractsIntroHeight()));
+                bodyRect.offsetMax = new Vector2(-18f, -44f);
             }
 
             LayoutOrderRow(orderOneRowRoot, orderOneInfoText, 0);
@@ -478,17 +506,7 @@ namespace IdleRestaurant.Gameplay
 
         private Vector2 ResolveStackedPosition()
         {
-            if (operationsPanelRoot == null && safeAreaRoot != null)
-            {
-                operationsPanelRoot = safeAreaRoot.Find("OperationsPanel") as RectTransform;
-            }
-
-            if (operationsPanelRoot == null)
-            {
-                return new Vector2(-18f, -236f);
-            }
-
-            return new Vector2(-18f, StackTopOffset - operationsPanelRoot.sizeDelta.y - StackGap);
+            return new Vector2(-18f, StackTopOffset);
         }
 
         private void EnsureOrderButton(

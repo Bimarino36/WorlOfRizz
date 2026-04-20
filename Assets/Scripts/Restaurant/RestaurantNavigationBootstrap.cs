@@ -10,6 +10,7 @@ namespace IdleRestaurant.Gameplay
         {
             "waiter",
             "guest",
+            "chair",
             "runtimehud",
             "eventsystem",
             "label"
@@ -20,6 +21,9 @@ namespace IdleRestaurant.Gameplay
         private const float AgentHeight = 0.65f;
         private const float AgentClimb = 0.04f;
         private const float AgentSlope = 50f;
+        private const float StandaloneChairHorizontalPadding = 0.01f;
+        private const float StandaloneChairHeightPadding = 0.03f;
+        private const float StandaloneChairFloorExtension = 0.12f;
 
         private static NavMeshDataInstance currentNavMeshInstance;
         private static int builtSceneHandle = -1;
@@ -55,6 +59,8 @@ namespace IdleRestaurant.Gameplay
                 Debug.LogWarning("RestaurantNavigationBootstrap: navigation roots were not found.");
                 return false;
             }
+
+            SyncStandaloneChairObstacles(sourceRoots);
 
             List<NavMeshBuildMarkup> markups = CollectIgnoredMarkups(sourceRoots);
             List<NavMeshBuildSource> sources = new List<NavMeshBuildSource>(256);
@@ -246,6 +252,119 @@ namespace IdleRestaurant.Gameplay
             }
 
             return false;
+        }
+
+        private static void SyncStandaloneChairObstacles(List<Transform> roots)
+        {
+            HashSet<Transform> processed = new HashSet<Transform>();
+            for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+            {
+                Transform root = roots[rootIndex];
+                if (root == null)
+                {
+                    continue;
+                }
+
+                Transform[] children = root.GetComponentsInChildren<Transform>(true);
+                for (int childIndex = 0; childIndex < children.Length; childIndex++)
+                {
+                    Transform child = children[childIndex];
+                    if (child == null || !IsStandaloneChair(child) || !processed.Add(child))
+                    {
+                        continue;
+                    }
+
+                    SyncStandaloneChairObstacle(child);
+                }
+            }
+        }
+
+        private static bool IsStandaloneChair(Transform target)
+        {
+            return target != null && target.name.ToLowerInvariant().Contains("bar chair");
+        }
+
+        private static void SyncStandaloneChairObstacle(Transform chair)
+        {
+            if (chair == null)
+            {
+                return;
+            }
+
+            Collider collider = ResolveStandaloneChairCollider(chair);
+            NavMeshObstacle obstacle = chair.GetComponent<NavMeshObstacle>();
+            if (collider == null)
+            {
+                if (obstacle != null)
+                {
+                    obstacle.enabled = false;
+                }
+
+                return;
+            }
+
+            if (obstacle == null)
+            {
+                obstacle = chair.gameObject.AddComponent<NavMeshObstacle>();
+            }
+
+            Bounds bounds = collider.bounds;
+            float floorY = Mathf.Min(bounds.min.y, chair.position.y - StandaloneChairFloorExtension);
+            float topY = bounds.max.y + StandaloneChairHeightPadding;
+            Vector3 worldCenter = new Vector3(bounds.center.x, (floorY + topY) * 0.5f, bounds.center.z);
+            Vector3 worldSize = new Vector3(
+                bounds.size.x + StandaloneChairHorizontalPadding,
+                Mathf.Max(0.08f, topY - floorY),
+                bounds.size.z + StandaloneChairHorizontalPadding);
+
+            obstacle.shape = NavMeshObstacleShape.Box;
+            obstacle.center = chair.InverseTransformPoint(worldCenter);
+            obstacle.size = ToLocalSize(worldSize, chair);
+            obstacle.carving = true;
+            obstacle.carveOnlyStationary = true;
+            obstacle.carvingMoveThreshold = 0.01f;
+            obstacle.carvingTimeToStationary = 0f;
+            obstacle.enabled = true;
+        }
+
+        private static Collider ResolveStandaloneChairCollider(Transform chair)
+        {
+            Collider collider = chair.GetComponent<Collider>();
+            if (collider != null && collider.enabled)
+            {
+                return collider;
+            }
+
+            Collider[] childColliders = chair.GetComponentsInChildren<Collider>(true);
+            for (int index = 0; index < childColliders.Length; index++)
+            {
+                if (childColliders[index] != null && childColliders[index].enabled)
+                {
+                    return childColliders[index];
+                }
+            }
+
+            return null;
+        }
+
+        private static Vector3 ToLocalSize(Vector3 worldSize, Transform targetTransform)
+        {
+            Vector3 lossyScale = targetTransform != null ? targetTransform.lossyScale : Vector3.one;
+            return new Vector3(
+                DivideSafely(worldSize.x, lossyScale.x),
+                DivideSafely(worldSize.y, lossyScale.y),
+                DivideSafely(worldSize.z, lossyScale.z));
+        }
+
+        private static float DivideSafely(float value, float scale)
+        {
+            float safeScale = Mathf.Abs(scale);
+            if (safeScale <= 0.0001f)
+            {
+                return value;
+            }
+
+            return value / safeScale;
         }
 
         private static void RemoveCurrentNavMesh()

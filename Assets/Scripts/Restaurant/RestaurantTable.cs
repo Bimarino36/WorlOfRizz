@@ -12,12 +12,11 @@ namespace IdleRestaurant.Gameplay
 {
     public sealed class RestaurantTable : MonoBehaviour
     {
-        [SerializeField] private bool allowSharedSeating;
         [SerializeField, Min(0.2f)] private float servicePointOffset = 0.65f;
         [SerializeField] private Transform waiterServicePoint;
         [SerializeField] private List<RestaurantSeat> seats = new List<RestaurantSeat>();
         [SerializeField] private NavMeshObstacle navigationObstacle;
-        [SerializeField, Min(0f)] private float navigationHorizontalPadding = 0.08f;
+        [SerializeField, Min(0f)] private float navigationHorizontalPadding = 0.02f;
         [SerializeField, Min(0f)] private float navigationFloorExtension = 0.24f;
         [SerializeField, Min(0f)] private float navigationHeightPadding = 0.05f;
         [SerializeField, Min(0f)] private float chairNavigationHorizontalPadding = 0.03f;
@@ -140,7 +139,8 @@ namespace IdleRestaurant.Gameplay
 
         public RestaurantSeat GetAvailableSeat()
         {
-            if (!allowSharedSeating && IsOccupied)
+            // Shared seating is temporarily disabled.
+            if (IsOccupied)
             {
                 return null;
             }
@@ -154,6 +154,28 @@ namespace IdleRestaurant.Gameplay
             }
 
             return null;
+        }
+
+        public void CollectAvailableSeats(List<RestaurantSeat> buffer)
+        {
+            if (buffer == null)
+            {
+                return;
+            }
+
+            // Shared seating is temporarily disabled.
+            if (IsOccupied)
+            {
+                return;
+            }
+
+            for (int index = 0; index < seats.Count; index++)
+            {
+                if (seats[index] != null && seats[index].IsAvailable)
+                {
+                    buffer.Add(seats[index]);
+                }
+            }
         }
 
         private void Awake()
@@ -360,14 +382,26 @@ namespace IdleRestaurant.Gameplay
             float floorY = Mathf.Min(bounds.min.y, transform.position.y - navigationFloorExtension);
             float topY = bounds.max.y + navigationHeightPadding;
             Vector3 worldCenter = new Vector3(bounds.center.x, (floorY + topY) * 0.5f, bounds.center.z);
-            Vector3 worldSize = new Vector3(
-                bounds.size.x + navigationHorizontalPadding,
-                Mathf.Max(0.1f, topY - floorY),
-                bounds.size.z + navigationHorizontalPadding);
+            if (tableCollider is CapsuleCollider || tableCollider is SphereCollider)
+            {
+                float worldRadius = Mathf.Max(bounds.extents.x, bounds.extents.z) + navigationHorizontalPadding * 0.5f;
+                navigationObstacle.shape = NavMeshObstacleShape.Capsule;
+                navigationObstacle.center = transform.InverseTransformPoint(worldCenter);
+                navigationObstacle.radius = ToLocalRadius(worldRadius, transform);
+                navigationObstacle.height = ToLocalHeight(Mathf.Max(0.1f, topY - floorY), transform);
+            }
+            else
+            {
+                Vector3 worldSize = new Vector3(
+                    bounds.size.x + navigationHorizontalPadding,
+                    Mathf.Max(0.1f, topY - floorY),
+                    bounds.size.z + navigationHorizontalPadding);
 
-            navigationObstacle.shape = NavMeshObstacleShape.Box;
-            navigationObstacle.center = transform.InverseTransformPoint(worldCenter);
-            navigationObstacle.size = ToLocalSize(worldSize);
+                navigationObstacle.shape = NavMeshObstacleShape.Box;
+                navigationObstacle.center = transform.InverseTransformPoint(worldCenter);
+                navigationObstacle.size = ToLocalSize(worldSize);
+            }
+
             navigationObstacle.carving = true;
             navigationObstacle.carveOnlyStationary = true;
             navigationObstacle.carvingMoveThreshold = 0.01f;
@@ -397,40 +431,13 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            Collider chairCollider = ResolveChairCollider(chairAnchor);
             NavMeshObstacle chairObstacle = chairAnchor.GetComponent<NavMeshObstacle>();
-            if (chairCollider == null)
+            if (chairObstacle != null)
             {
-                if (chairObstacle != null)
-                {
-                    chairObstacle.enabled = false;
-                }
-
-                return;
+                chairObstacle.enabled = false;
             }
 
-            if (chairObstacle == null)
-            {
-                chairObstacle = chairAnchor.gameObject.AddComponent<NavMeshObstacle>();
-            }
-
-            Bounds bounds = chairCollider.bounds;
-            float floorY = Mathf.Min(bounds.min.y, chairAnchor.position.y - chairNavigationFloorExtension);
-            float topY = bounds.max.y + chairNavigationHeightPadding;
-            Vector3 worldCenter = new Vector3(bounds.center.x, (floorY + topY) * 0.5f, bounds.center.z);
-            Vector3 worldSize = new Vector3(
-                bounds.size.x + chairNavigationHorizontalPadding,
-                Mathf.Max(0.08f, topY - floorY),
-                bounds.size.z + chairNavigationHorizontalPadding);
-
-            chairObstacle.shape = NavMeshObstacleShape.Box;
-            chairObstacle.center = chairAnchor.InverseTransformPoint(worldCenter);
-            chairObstacle.size = ToLocalSize(worldSize, chairAnchor);
-            chairObstacle.carving = true;
-            chairObstacle.carveOnlyStationary = true;
-            chairObstacle.carvingMoveThreshold = 0.01f;
-            chairObstacle.carvingTimeToStationary = 0f;
-            chairObstacle.enabled = true;
+            // Chairs are excluded from restaurant path blocking for now.
         }
 
         private Collider ResolveTableCollider()
@@ -479,6 +486,19 @@ namespace IdleRestaurant.Gameplay
                 DivideSafely(worldSize.x, lossyScale.x),
                 DivideSafely(worldSize.y, lossyScale.y),
                 DivideSafely(worldSize.z, lossyScale.z));
+        }
+
+        private static float ToLocalRadius(float worldRadius, Transform targetTransform)
+        {
+            Vector3 lossyScale = targetTransform != null ? targetTransform.lossyScale : Vector3.one;
+            float planarScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
+            return DivideSafely(worldRadius, planarScale);
+        }
+
+        private static float ToLocalHeight(float worldHeight, Transform targetTransform)
+        {
+            Vector3 lossyScale = targetTransform != null ? targetTransform.lossyScale : Vector3.one;
+            return DivideSafely(worldHeight, lossyScale.y);
         }
 
         private static float DivideSafely(float value, float scale)
