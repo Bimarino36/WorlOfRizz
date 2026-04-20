@@ -11,6 +11,14 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private RectTransform panelRoot;
         [SerializeField] private Text titleText;
         [SerializeField] private Text bodyText;
+        [SerializeField] private Button collapseButton;
+        [SerializeField] private Text collapseButtonText;
+        [SerializeField] private bool collapsed;
+
+        private const float ExpandedHeight = 148f;
+        private const float CollapsedHeight = 44f;
+
+        private bool collapseButtonBound;
         private string lastBodyValue = string.Empty;
 
         private void Awake()
@@ -74,15 +82,18 @@ namespace IdleRestaurant.Gameplay
                 panelRoot.anchorMin = new Vector2(1f, 1f);
                 panelRoot.anchorMax = new Vector2(1f, 1f);
                 panelRoot.pivot = new Vector2(1f, 1f);
-                panelRoot.sizeDelta = new Vector2(300f, 134f);
-                panelRoot.anchoredPosition = new Vector2(-18f, -18f);
+                panelRoot.sizeDelta = new Vector2(308f, 148f);
+                panelRoot.anchoredPosition = new Vector2(-18f, -74f);
 
                 Image panelImage = panelObject.GetComponent<Image>();
-                panelImage.color = new Color(0.08f, 0.1f, 0.13f, 0.84f);
+                ApplyPanelStyle(panelImage, new Color(0.08f, 0.1f, 0.14f, 0.86f));
             }
 
             EnsureTitle();
             EnsureBody();
+            EnsureCollapseButton();
+            WireCollapseButton();
+            ApplyPanelLayout();
         }
 
         private void EnsureTitle()
@@ -109,13 +120,10 @@ namespace IdleRestaurant.Gameplay
             titleRect.anchorMax = new Vector2(1f, 1f);
             titleRect.pivot = new Vector2(0.5f, 1f);
             titleRect.offsetMin = new Vector2(14f, -34f);
-            titleRect.offsetMax = new Vector2(-14f, -8f);
+            titleRect.offsetMax = new Vector2(-52f, -8f);
 
             titleText = titleObject.GetComponent<Text>();
-            titleText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            titleText.fontSize = 20;
-            titleText.alignment = TextAnchor.UpperLeft;
-            titleText.color = new Color(0.95f, 0.95f, 0.95f, 1f);
+            ApplyTextStyle(titleText, 19, TextAnchor.UpperLeft, new Color(0.95f, 0.95f, 0.95f, 1f), FontStyle.Bold);
             titleText.text = LocalizationService.Get("rest.ops.title");
         }
 
@@ -146,12 +154,90 @@ namespace IdleRestaurant.Gameplay
             bodyRect.offsetMax = new Vector2(-14f, -38f);
 
             bodyText = bodyObject.GetComponent<Text>();
-            bodyText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            bodyText.fontSize = 16;
-            bodyText.alignment = TextAnchor.UpperLeft;
+            ApplyTextStyle(bodyText, 15, TextAnchor.UpperLeft, new Color(0.9f, 0.92f, 0.94f, 1f), FontStyle.Normal);
             bodyText.horizontalOverflow = HorizontalWrapMode.Wrap;
             bodyText.verticalOverflow = VerticalWrapMode.Overflow;
-            bodyText.color = new Color(0.9f, 0.92f, 0.94f, 1f);
+        }
+
+        private void EnsureCollapseButton()
+        {
+            if (panelRoot == null)
+            {
+                return;
+            }
+
+            if (collapseButton == null)
+            {
+                Transform existingButton = panelRoot.Find("CollapseButton");
+                if (existingButton != null)
+                {
+                    collapseButton = existingButton.GetComponent<Button>();
+                    collapseButtonText = existingButton.GetComponentInChildren<Text>();
+                }
+            }
+
+            if (collapseButton == null)
+            {
+                GameObject buttonObject = new GameObject("CollapseButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+                RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+                buttonRect.SetParent(panelRoot, false);
+                buttonRect.anchorMin = new Vector2(1f, 1f);
+                buttonRect.anchorMax = new Vector2(1f, 1f);
+                buttonRect.pivot = new Vector2(1f, 1f);
+                buttonRect.anchoredPosition = new Vector2(-10f, -8f);
+                buttonRect.sizeDelta = new Vector2(28f, 24f);
+
+                collapseButton = buttonObject.GetComponent<Button>();
+                ApplyPanelStyle(buttonObject.GetComponent<Image>(), new Color(0.16f, 0.2f, 0.25f, 0.98f));
+                collapseButton.targetGraphic = buttonObject.GetComponent<Image>();
+
+                GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+                RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+                labelRect.SetParent(buttonRect, false);
+                labelRect.anchorMin = Vector2.zero;
+                labelRect.anchorMax = Vector2.one;
+                labelRect.offsetMin = Vector2.zero;
+                labelRect.offsetMax = Vector2.zero;
+
+                collapseButtonText = labelObject.GetComponent<Text>();
+                ApplyTextStyle(collapseButtonText, 18, TextAnchor.MiddleCenter, Color.white, FontStyle.Bold);
+            }
+        }
+
+        private void WireCollapseButton()
+        {
+            if (collapseButtonBound || collapseButton == null)
+            {
+                return;
+            }
+
+            collapseButton.onClick.RemoveAllListeners();
+            collapseButton.onClick.AddListener(ToggleCollapsed);
+            collapseButtonBound = true;
+        }
+
+        private void ToggleCollapsed()
+        {
+            collapsed = !collapsed;
+            ApplyPanelLayout();
+        }
+
+        private void ApplyPanelLayout()
+        {
+            if (panelRoot != null)
+            {
+                panelRoot.sizeDelta = new Vector2(308f, collapsed ? CollapsedHeight : ExpandedHeight);
+            }
+
+            if (bodyText != null)
+            {
+                bodyText.gameObject.SetActive(!collapsed);
+            }
+
+            if (collapseButtonText != null)
+            {
+                collapseButtonText.text = collapsed ? "+" : "-";
+            }
         }
 
         private void UpdatePanel()
@@ -209,6 +295,33 @@ namespace IdleRestaurant.Gameplay
             }
 
             return LocalizationService.Get("rest.ops.idle");
+        }
+
+        private static void ApplyPanelStyle(Image image, Color color)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = Resources.Load<Sprite>("UI/RoundedRect");
+            image.type = image.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            image.color = color;
+        }
+
+        private static void ApplyTextStyle(Text text, int fontSize, TextAnchor alignment, Color color, FontStyle fontStyle)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = fontSize;
+            text.fontStyle = fontStyle;
+            text.alignment = alignment;
+            text.supportRichText = true;
+            text.color = color;
         }
     }
 }

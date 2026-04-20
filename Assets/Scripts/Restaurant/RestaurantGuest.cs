@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace IdleRestaurant.Gameplay
 {
@@ -27,6 +28,7 @@ namespace IdleRestaurant.Gameplay
         [SerializeField, Range(0f, 1f)] private float currentUrgencyNormalized;
         [SerializeField] private string waitPhaseLabel = "None";
         [SerializeField] private bool hasWalkedOut;
+        [SerializeField] private RestaurantPathMover pathMover;
 
         private RestaurantRuntime runtime;
         private RestaurantSeat currentSeat;
@@ -40,6 +42,11 @@ namespace IdleRestaurant.Gameplay
         private float waitDecayStartNormalized;
         private bool allowWalkoutDuringCurrentPhase;
 
+        private void Awake()
+        {
+            ResolvePathMover();
+        }
+
         public RestaurantSeat CurrentSeat => currentSeat;
 
         public float ServiceQuality => serviceQuality;
@@ -50,6 +57,8 @@ namespace IdleRestaurant.Gameplay
 
         public void Initialize(RestaurantRuntime ownerRuntime, RestaurantSeat seat, RestaurantPoint guestExitPoint)
         {
+            ResolvePathMover();
+            pathMover?.ClearPath();
             runtime = ownerRuntime;
             currentSeat = seat;
             exitPoint = guestExitPoint;
@@ -63,6 +72,8 @@ namespace IdleRestaurant.Gameplay
 
         public void BeginQueueing(Vector3 queuePosition)
         {
+            ResolvePathMover();
+            pathMover?.ClearPath();
             ClearWaitState();
             queueTargetPosition = queuePosition;
             mode = GuestMode.WaitingInQueue;
@@ -80,12 +91,15 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
+            ResolvePathMover();
+            pathMover?.ClearPath();
             currentSeat = seat;
             mode = GuestMode.WalkingToSeat;
         }
 
         public void BeginEating(float duration)
         {
+            pathMover?.ClearPath();
             CompleteActiveWaitPhase();
             stateTimer = Mathf.Max(0.1f, duration);
             mode = GuestMode.Eating;
@@ -93,6 +107,8 @@ namespace IdleRestaurant.Gameplay
 
         public void BeginLeaving()
         {
+            ResolvePathMover();
+            pathMover?.ClearPath();
             ClearWaitState();
             mode = GuestMode.Leaving;
         }
@@ -156,17 +172,13 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            if (!MoveTowards(currentSeat.SeatPoint.position, 0.08f))
+            Vector3 approachPosition = GetSeatApproachPosition();
+            if (!MoveTowards(approachPosition, 0.08f))
             {
                 return;
             }
 
-            currentSeat.MarkGuestSeated();
-            mode = GuestMode.Idle;
-            if (runtime != null)
-            {
-                runtime.NotifyGuestSeated(this);
-            }
+            FinishSeating();
         }
 
         private void UpdateQueueing()
@@ -276,6 +288,17 @@ namespace IdleRestaurant.Gameplay
 
         private bool MoveTowards(Vector3 targetPosition, float stopDistance)
         {
+            ResolvePathMover();
+            if (pathMover != null)
+            {
+                return pathMover.MoveTowards(targetPosition, stopDistance, moveSpeed, turnSpeed);
+            }
+
+            return AdvanceDirectlyTo(targetPosition, stopDistance);
+        }
+
+        private bool AdvanceDirectlyTo(Vector3 targetPosition, float stopDistance)
+        {
             Vector3 currentPosition = transform.position;
             Vector3 flattenedTarget = new Vector3(targetPosition.x, currentPosition.y, targetPosition.z);
             Vector3 delta = flattenedTarget - currentPosition;
@@ -296,6 +319,80 @@ namespace IdleRestaurant.Gameplay
             }
 
             return false;
+        }
+
+        private void ResolvePathMover()
+        {
+            if (pathMover == null)
+            {
+                pathMover = GetComponent<RestaurantPathMover>();
+            }
+
+            if (pathMover == null)
+            {
+                pathMover = gameObject.AddComponent<RestaurantPathMover>();
+            }
+        }
+
+        private Vector3 GetSeatApproachPosition()
+        {
+            if (currentSeat == null)
+            {
+                return transform.position;
+            }
+
+            Transform seatPoint = currentSeat.SeatPoint;
+            Transform servicePoint = currentSeat.ServicePoint;
+            if (servicePoint == null)
+            {
+                return seatPoint.position;
+            }
+
+            if (seatPoint == null)
+            {
+                return servicePoint.position;
+            }
+
+            float seatOffset = EstimateNavMeshOffset(seatPoint.position);
+            float serviceOffset = EstimateNavMeshOffset(servicePoint.position);
+
+            if (serviceOffset + 0.04f < seatOffset)
+            {
+                return servicePoint.position;
+            }
+
+            return seatPoint.position;
+        }
+
+        private void FinishSeating()
+        {
+            if (currentSeat == null)
+            {
+                return;
+            }
+
+            Vector3 seatPosition = currentSeat.SeatPoint.position;
+            transform.position = new Vector3(seatPosition.x, transform.position.y, seatPosition.z);
+            pathMover?.ClearPath();
+            currentSeat.MarkGuestSeated();
+            mode = GuestMode.Idle;
+            if (runtime != null)
+            {
+                runtime.NotifyGuestSeated(this);
+            }
+        }
+
+        private static float EstimateNavMeshOffset(Vector3 targetPosition)
+        {
+            NavMeshHit hit;
+            if (!NavMesh.SamplePosition(targetPosition, out hit, 2f, NavMesh.AllAreas))
+            {
+                return float.PositiveInfinity;
+            }
+
+            Vector3 delta = hit.position - targetPosition;
+            delta.y = 0f;
+            return delta.magnitude;
         }
     }
 }

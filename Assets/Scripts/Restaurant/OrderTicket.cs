@@ -93,8 +93,8 @@ namespace IdleRestaurant.Gameplay
 
         public void ApplyTipMultiplier(float tipMultiplier)
         {
-            float clampedMultiplier = Mathf.Clamp01(tipMultiplier);
-            tipAmount = Mathf.Max(0, Mathf.RoundToInt(baseTipAmount * clampedMultiplier));
+            float sanitizedMultiplier = Mathf.Max(0f, tipMultiplier);
+            tipAmount = Mathf.Max(0, Mathf.RoundToInt(baseTipAmount * sanitizedMultiplier));
         }
     }
 }

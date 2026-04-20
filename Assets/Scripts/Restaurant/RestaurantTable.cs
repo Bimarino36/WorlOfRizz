@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.AI;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,6 +16,13 @@ namespace IdleRestaurant.Gameplay
         [SerializeField, Min(0.2f)] private float servicePointOffset = 0.65f;
         [SerializeField] private Transform waiterServicePoint;
         [SerializeField] private List<RestaurantSeat> seats = new List<RestaurantSeat>();
+        [SerializeField] private NavMeshObstacle navigationObstacle;
+        [SerializeField, Min(0f)] private float navigationHorizontalPadding = 0.08f;
+        [SerializeField, Min(0f)] private float navigationFloorExtension = 0.24f;
+        [SerializeField, Min(0f)] private float navigationHeightPadding = 0.05f;
+        [SerializeField, Min(0f)] private float chairNavigationHorizontalPadding = 0.03f;
+        [SerializeField, Min(0f)] private float chairNavigationHeightPadding = 0.03f;
+        [SerializeField, Min(0f)] private float chairNavigationFloorExtension = 0.12f;
 
         public IReadOnlyList<RestaurantSeat> Seats => seats;
 
@@ -125,6 +133,9 @@ namespace IdleRestaurant.Gameplay
                     seats[index].Bind(this);
                 }
             }
+
+            SyncNavigationObstacle();
+            SyncChairNavigationObstacles();
         }
 
         public RestaurantSeat GetAvailableSeat()
@@ -149,6 +160,18 @@ namespace IdleRestaurant.Gameplay
         {
             RefreshSeats();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            SyncNavigationObstacle();
+        }
+#endif
 
 #if UNITY_EDITOR
         [ContextMenu("Rebuild Seats From Child Chairs")]
@@ -308,6 +331,165 @@ namespace IdleRestaurant.Gameplay
             Vector3 fallback = referenceRoot.position;
             fallback.y = 0f;
             return fallback;
+        }
+
+        public void SyncNavigationObstacle()
+        {
+            Collider tableCollider = ResolveTableCollider();
+            if (tableCollider == null)
+            {
+                if (navigationObstacle != null)
+                {
+                    navigationObstacle.enabled = false;
+                }
+
+                return;
+            }
+
+            if (navigationObstacle == null)
+            {
+                navigationObstacle = GetComponent<NavMeshObstacle>();
+            }
+
+            if (navigationObstacle == null)
+            {
+                navigationObstacle = gameObject.AddComponent<NavMeshObstacle>();
+            }
+
+            Bounds bounds = tableCollider.bounds;
+            float floorY = Mathf.Min(bounds.min.y, transform.position.y - navigationFloorExtension);
+            float topY = bounds.max.y + navigationHeightPadding;
+            Vector3 worldCenter = new Vector3(bounds.center.x, (floorY + topY) * 0.5f, bounds.center.z);
+            Vector3 worldSize = new Vector3(
+                bounds.size.x + navigationHorizontalPadding,
+                Mathf.Max(0.1f, topY - floorY),
+                bounds.size.z + navigationHorizontalPadding);
+
+            navigationObstacle.shape = NavMeshObstacleShape.Box;
+            navigationObstacle.center = transform.InverseTransformPoint(worldCenter);
+            navigationObstacle.size = ToLocalSize(worldSize);
+            navigationObstacle.carving = true;
+            navigationObstacle.carveOnlyStationary = true;
+            navigationObstacle.carvingMoveThreshold = 0.01f;
+            navigationObstacle.carvingTimeToStationary = 0f;
+            navigationObstacle.enabled = true;
+        }
+
+        private void SyncChairNavigationObstacles()
+        {
+            for (int index = 0; index < seats.Count; index++)
+            {
+                RestaurantSeat seat = seats[index];
+                Transform chairAnchor = seat != null ? seat.ChairAnchor : null;
+                if (chairAnchor == null)
+                {
+                    continue;
+                }
+
+                SyncChairObstacle(chairAnchor);
+            }
+        }
+
+        private void SyncChairObstacle(Transform chairAnchor)
+        {
+            if (chairAnchor == null)
+            {
+                return;
+            }
+
+            Collider chairCollider = ResolveChairCollider(chairAnchor);
+            NavMeshObstacle chairObstacle = chairAnchor.GetComponent<NavMeshObstacle>();
+            if (chairCollider == null)
+            {
+                if (chairObstacle != null)
+                {
+                    chairObstacle.enabled = false;
+                }
+
+                return;
+            }
+
+            if (chairObstacle == null)
+            {
+                chairObstacle = chairAnchor.gameObject.AddComponent<NavMeshObstacle>();
+            }
+
+            Bounds bounds = chairCollider.bounds;
+            float floorY = Mathf.Min(bounds.min.y, chairAnchor.position.y - chairNavigationFloorExtension);
+            float topY = bounds.max.y + chairNavigationHeightPadding;
+            Vector3 worldCenter = new Vector3(bounds.center.x, (floorY + topY) * 0.5f, bounds.center.z);
+            Vector3 worldSize = new Vector3(
+                bounds.size.x + chairNavigationHorizontalPadding,
+                Mathf.Max(0.08f, topY - floorY),
+                bounds.size.z + chairNavigationHorizontalPadding);
+
+            chairObstacle.shape = NavMeshObstacleShape.Box;
+            chairObstacle.center = chairAnchor.InverseTransformPoint(worldCenter);
+            chairObstacle.size = ToLocalSize(worldSize, chairAnchor);
+            chairObstacle.carving = true;
+            chairObstacle.carveOnlyStationary = true;
+            chairObstacle.carvingMoveThreshold = 0.01f;
+            chairObstacle.carvingTimeToStationary = 0f;
+            chairObstacle.enabled = true;
+        }
+
+        private Collider ResolveTableCollider()
+        {
+            Collider[] colliders = GetComponents<Collider>();
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                if (colliders[index] != null && colliders[index].enabled)
+                {
+                    return colliders[index];
+                }
+            }
+
+            return null;
+        }
+
+        private Collider ResolveChairCollider(Transform chairAnchor)
+        {
+            Collider collider = chairAnchor.GetComponent<Collider>();
+            if (collider != null && collider.enabled)
+            {
+                return collider;
+            }
+
+            Collider[] childColliders = chairAnchor.GetComponentsInChildren<Collider>(true);
+            for (int index = 0; index < childColliders.Length; index++)
+            {
+                if (childColliders[index] != null && childColliders[index].enabled)
+                {
+                    return childColliders[index];
+                }
+            }
+
+            return null;
+        }
+
+        private Vector3 ToLocalSize(Vector3 worldSize)
+        {
+            return ToLocalSize(worldSize, transform);
+        }
+
+        private static Vector3 ToLocalSize(Vector3 worldSize, Transform targetTransform)
+        {
+            Vector3 lossyScale = targetTransform != null ? targetTransform.lossyScale : Vector3.one;
+            return new Vector3(
+                DivideSafely(worldSize.x, lossyScale.x),
+                DivideSafely(worldSize.y, lossyScale.y),
+                DivideSafely(worldSize.z, lossyScale.z));
+        }
+
+        private static float DivideSafely(float value, float scale)
+        {
+            float safeScale = Mathf.Abs(scale);
+            if (safeScale <= 0.0001f)
+            {
+                return value;
+            }
+
+            return value / safeScale;
         }
     }
 }
