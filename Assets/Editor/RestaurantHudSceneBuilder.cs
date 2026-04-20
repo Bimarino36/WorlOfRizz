@@ -13,6 +13,14 @@ namespace IdleRestaurant.Editor
 {
     public static class RestaurantHudSceneBuilder
     {
+        private enum CategoryIconKind
+        {
+            Waiter = 0,
+            Furniture = 1,
+            Bar = 2,
+            Kitchen = 3
+        }
+
         [MenuItem("Tools/Idle Restaurant/Rebuild Mobile HUD")]
         public static void RebuildMobileHud()
         {
@@ -225,45 +233,66 @@ namespace IdleRestaurant.Editor
             mainContentRect.offsetMin = new Vector2(0f, 0f);
             mainContentRect.offsetMax = new Vector2(0f, 0f);
 
-            Button tableButton = EnsureButton(mainContent, "TableUpgradeButton");
-            LayoutButtonStack(Rect(tableButton.gameObject), 0, 4);
-            Text tableLabel = EnsureText(tableButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
-            RectTransform tableLabelRect = Rect(tableLabel.gameObject);
-            StretchFull(tableLabelRect);
-            tableLabelRect.offsetMin = new Vector2(18f, 12f);
-            tableLabelRect.offsetMax = new Vector2(-18f, -12f);
-            tableLabel.raycastTarget = false;
-            tableLabel.text = "Tables Lv.0  Need $120\nIncome x1.00";
-
             Button waiterButton = EnsureButton(mainContent, "WaiterUpgradeButton");
-            LayoutButtonStack(Rect(waiterButton.gameObject), 1, 4);
-            Text waiterLabel = EnsureText(waiterButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
-            RectTransform waiterLabelRect = Rect(waiterLabel.gameObject);
-            StretchFull(waiterLabelRect);
-            waiterLabelRect.offsetMin = new Vector2(18f, 12f);
-            waiterLabelRect.offsetMax = new Vector2(-18f, -12f);
-            waiterLabel.raycastTarget = false;
-            waiterLabel.text = GetWaiterEntryLabel();
+            LayoutCategoryGridButton(Rect(waiterButton.gameObject), 0, 2, 2, new Vector2(220f, 220f), new Vector2(24f, 24f), new Vector2(0f, -6f));
+            Text waiterLabel = EnsureText(waiterButton.gameObject, "Label", 24, TextAnchor.LowerCenter, FontStyle.Bold);
+            ConfigureCategoryButton(waiterButton, waiterLabel, GetWaiterCategoryLabel(), CategoryIconKind.Waiter, new Color(0.22f, 0.43f, 0.29f, 0.98f));
 
-            Button kitchenButton = EnsureButton(mainContent, "KitchenUpgradeButton");
-            LayoutButtonStack(Rect(kitchenButton.gameObject), 2, 4);
-            Text kitchenLabel = EnsureText(kitchenButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
-            RectTransform kitchenLabelRect = Rect(kitchenLabel.gameObject);
-            StretchFull(kitchenLabelRect);
-            kitchenLabelRect.offsetMin = new Vector2(18f, 12f);
-            kitchenLabelRect.offsetMax = new Vector2(-18f, -12f);
-            kitchenLabel.raycastTarget = false;
-            kitchenLabel.text = "Kitchen Lv.0  Need $105\nSpeed x1.00";
+            Button tableButton = EnsureButton(mainContent, "TableUpgradeButton");
+            LayoutCategoryGridButton(Rect(tableButton.gameObject), 1, 2, 2, new Vector2(220f, 220f), new Vector2(24f, 24f), new Vector2(0f, -6f));
+            Text tableLabel = EnsureText(tableButton.gameObject, "Label", 24, TextAnchor.LowerCenter, FontStyle.Bold);
+            ConfigureCategoryButton(tableButton, tableLabel, GetFurnitureCategoryLabel(), CategoryIconKind.Furniture, new Color(0.41f, 0.3f, 0.22f, 0.98f));
 
             Button barButton = EnsureButton(mainContent, "BarUpgradeButton");
-            LayoutButtonStack(Rect(barButton.gameObject), 3, 4);
-            Text barLabel = EnsureText(barButton.gameObject, "Label", 20, TextAnchor.MiddleCenter, FontStyle.Bold);
-            RectTransform barLabelRect = Rect(barLabel.gameObject);
-            StretchFull(barLabelRect);
-            barLabelRect.offsetMin = new Vector2(18f, 12f);
-            barLabelRect.offsetMax = new Vector2(-18f, -12f);
-            barLabel.raycastTarget = false;
-            barLabel.text = "Bar Lv.0  Need $95\nSpeed x1.00";
+            LayoutCategoryGridButton(Rect(barButton.gameObject), 2, 2, 2, new Vector2(220f, 220f), new Vector2(24f, 24f), new Vector2(0f, -6f));
+            Text barLabel = EnsureText(barButton.gameObject, "Label", 24, TextAnchor.LowerCenter, FontStyle.Bold);
+            ConfigureCategoryButton(barButton, barLabel, GetBarCategoryLabel(), CategoryIconKind.Bar, new Color(0.2f, 0.33f, 0.47f, 0.98f));
+
+            Button kitchenButton = EnsureButton(mainContent, "KitchenUpgradeButton");
+            LayoutCategoryGridButton(Rect(kitchenButton.gameObject), 3, 2, 2, new Vector2(220f, 220f), new Vector2(24f, 24f), new Vector2(0f, -6f));
+            Text kitchenLabel = EnsureText(kitchenButton.gameObject, "Label", 24, TextAnchor.LowerCenter, FontStyle.Bold);
+            ConfigureCategoryButton(kitchenButton, kitchenLabel, GetKitchenCategoryLabel(), CategoryIconKind.Kitchen, new Color(0.47f, 0.3f, 0.16f, 0.98f));
+
+            GameObject waiterListContent = EnsureUiObject(upgradesPanel, "WaiterListContent");
+            RectTransform waiterListRect = Rect(waiterListContent);
+            StretchFull(waiterListRect);
+            waiterListRect.offsetMin = new Vector2(0f, 0f);
+            waiterListRect.offsetMax = new Vector2(0f, 0f);
+            waiterListContent.SetActive(false);
+
+            Button waiterListBackButton = EnsureButton(waiterListContent, "BackButton");
+            RectTransform waiterListBackRect = Rect(waiterListBackButton.gameObject);
+            waiterListBackRect.anchorMin = new Vector2(0f, 1f);
+            waiterListBackRect.anchorMax = new Vector2(0f, 1f);
+            waiterListBackRect.pivot = new Vector2(0f, 1f);
+            waiterListBackRect.anchoredPosition = new Vector2(16f, -14f);
+            waiterListBackRect.sizeDelta = new Vector2(132f, 42f);
+            waiterListBackButton.GetComponent<Image>().color = new Color(0.18f, 0.32f, 0.22f, 0.98f);
+            Text waiterListBackLabel = EnsureText(waiterListBackButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform waiterListBackLabelRect = Rect(waiterListBackLabel.gameObject);
+            StretchFull(waiterListBackLabelRect);
+            waiterListBackLabel.raycastTarget = false;
+            waiterListBackLabel.text = GetWaiterBackLabel();
+
+            Text waiterListTitleText = EnsureText(waiterListContent, "TitleText", 28, TextAnchor.UpperCenter, FontStyle.Bold);
+            waiterListTitleText.raycastTarget = false;
+            RectTransform waiterListTitleRect = Rect(waiterListTitleText.gameObject);
+            waiterListTitleRect.anchorMin = new Vector2(0.5f, 1f);
+            waiterListTitleRect.anchorMax = new Vector2(0.5f, 1f);
+            waiterListTitleRect.pivot = new Vector2(0.5f, 1f);
+            waiterListTitleRect.anchoredPosition = new Vector2(0f, -22f);
+            waiterListTitleRect.sizeDelta = new Vector2(620f, 42f);
+            waiterListTitleText.text = GetWaiterListTitle();
+
+            Button waiterRosterEntryButton = EnsureButton(waiterListContent, "WaiterRosterEntryButton");
+            LayoutCategoryGridButton(Rect(waiterRosterEntryButton.gameObject), 0, 2, 1, new Vector2(240f, 252f), new Vector2(28f, 0f), new Vector2(0f, -8f));
+            Text waiterRosterEntryLabel = EnsureText(waiterRosterEntryButton.gameObject, "Label", 18, TextAnchor.UpperCenter, FontStyle.Bold);
+            ConfigureWaiterRosterCard(waiterRosterEntryButton, waiterRosterEntryLabel, GetWaiterEntryLabel(), false, new Color(0.2f, 0.39f, 0.28f, 0.98f));
+
+            Button hireWaiterButton = EnsureButton(waiterListContent, "HireWaiterButton");
+            LayoutCategoryGridButton(Rect(hireWaiterButton.gameObject), 1, 2, 1, new Vector2(240f, 252f), new Vector2(28f, 0f), new Vector2(0f, -8f));
+            Text hireWaiterLabel = EnsureText(hireWaiterButton.gameObject, "Label", 18, TextAnchor.UpperCenter, FontStyle.Bold);
+            ConfigureWaiterRosterCard(hireWaiterButton, hireWaiterLabel, GetHireWaiterLabel(), true, new Color(0.19f, 0.29f, 0.43f, 0.98f));
 
             GameObject waiterDetailsContent = EnsureUiObject(upgradesPanel, "WaiterDetailsContent");
             RectTransform waiterDetailsRect = Rect(waiterDetailsContent);
@@ -363,6 +392,65 @@ namespace IdleRestaurant.Editor
             waiterCharismaLabelRect.offsetMax = new Vector2(-18f, -10f);
             waiterCharismaLabel.raycastTarget = false;
             waiterCharismaLabel.text = GetWaiterCharismaLabel();
+
+            GameObject categoryDetailsContent = EnsureUiObject(upgradesPanel, "CategoryDetailsContent");
+            RectTransform categoryDetailsRect = Rect(categoryDetailsContent);
+            StretchFull(categoryDetailsRect);
+            categoryDetailsRect.offsetMin = new Vector2(0f, 0f);
+            categoryDetailsRect.offsetMax = new Vector2(0f, 0f);
+            categoryDetailsContent.SetActive(false);
+
+            Button categoryBackButton = EnsureButton(categoryDetailsContent, "BackButton");
+            RectTransform categoryBackRect = Rect(categoryBackButton.gameObject);
+            categoryBackRect.anchorMin = new Vector2(0f, 1f);
+            categoryBackRect.anchorMax = new Vector2(0f, 1f);
+            categoryBackRect.pivot = new Vector2(0f, 1f);
+            categoryBackRect.anchoredPosition = new Vector2(16f, -14f);
+            categoryBackRect.sizeDelta = new Vector2(132f, 42f);
+            categoryBackButton.GetComponent<Image>().color = new Color(0.18f, 0.32f, 0.22f, 0.98f);
+            Text categoryBackLabel = EnsureText(categoryBackButton.gameObject, "Label", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform categoryBackLabelRect = Rect(categoryBackLabel.gameObject);
+            StretchFull(categoryBackLabelRect);
+            categoryBackLabel.raycastTarget = false;
+            categoryBackLabel.text = GetCategoryBackLabel();
+
+            Text categoryTitleText = EnsureText(categoryDetailsContent, "TitleText", 28, TextAnchor.UpperCenter, FontStyle.Bold);
+            categoryTitleText.raycastTarget = false;
+            RectTransform categoryTitleRect = Rect(categoryTitleText.gameObject);
+            categoryTitleRect.anchorMin = new Vector2(0.5f, 1f);
+            categoryTitleRect.anchorMax = new Vector2(0.5f, 1f);
+            categoryTitleRect.pivot = new Vector2(0.5f, 1f);
+            categoryTitleRect.anchoredPosition = new Vector2(0f, -22f);
+            categoryTitleRect.sizeDelta = new Vector2(620f, 42f);
+            categoryTitleText.text = GetFurnitureCategoryLabel();
+
+            Text categorySummaryText = EnsureText(categoryDetailsContent, "SummaryText", 20, TextAnchor.MiddleCenter, FontStyle.Normal);
+            categorySummaryText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            categorySummaryText.verticalOverflow = VerticalWrapMode.Overflow;
+            categorySummaryText.raycastTarget = false;
+            RectTransform categorySummaryRect = Rect(categorySummaryText.gameObject);
+            categorySummaryRect.anchorMin = new Vector2(0.5f, 0.5f);
+            categorySummaryRect.anchorMax = new Vector2(0.5f, 0.5f);
+            categorySummaryRect.pivot = new Vector2(0.5f, 0.5f);
+            categorySummaryRect.anchoredPosition = new Vector2(0f, 34f);
+            categorySummaryRect.sizeDelta = new Vector2(720f, 120f);
+            categorySummaryText.text = GetFurniturePreviewSummary();
+
+            Button categoryActionButton = EnsureButton(categoryDetailsContent, "ActionButton");
+            RectTransform categoryActionRect = Rect(categoryActionButton.gameObject);
+            categoryActionRect.anchorMin = new Vector2(0.5f, 0f);
+            categoryActionRect.anchorMax = new Vector2(0.5f, 0f);
+            categoryActionRect.pivot = new Vector2(0.5f, 0f);
+            categoryActionRect.anchoredPosition = new Vector2(0f, 28f);
+            categoryActionRect.sizeDelta = new Vector2(560f, 94f);
+            categoryActionButton.GetComponent<Image>().color = new Color(0.23f, 0.5f, 0.31f, 0.98f);
+            Text categoryActionLabel = EnsureText(categoryActionButton.gameObject, "Label", 24, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform categoryActionLabelRect = Rect(categoryActionLabel.gameObject);
+            StretchFull(categoryActionLabelRect);
+            categoryActionLabelRect.offsetMin = new Vector2(18f, 10f);
+            categoryActionLabelRect.offsetMax = new Vector2(-18f, -10f);
+            categoryActionLabel.raycastTarget = false;
+            categoryActionLabel.text = GetFurniturePreviewAction();
 
             Button closeButton = EnsureButton(upgradesPanel, "CloseButton");
             RectTransform closeButtonRect = Rect(closeButton.gameObject);
@@ -596,6 +684,14 @@ namespace IdleRestaurant.Editor
             serializedHud.FindProperty("kitchenUpgradeButtonText").objectReferenceValue = kitchenLabel;
             serializedHud.FindProperty("barUpgradeButton").objectReferenceValue = barButton;
             serializedHud.FindProperty("barUpgradeButtonText").objectReferenceValue = barLabel;
+            serializedHud.FindProperty("waiterListContent").objectReferenceValue = waiterListRect;
+            serializedHud.FindProperty("waiterListBackButton").objectReferenceValue = waiterListBackButton;
+            serializedHud.FindProperty("waiterListBackButtonText").objectReferenceValue = waiterListBackLabel;
+            serializedHud.FindProperty("waiterListTitleText").objectReferenceValue = waiterListTitleText;
+            serializedHud.FindProperty("waiterRosterEntryButton").objectReferenceValue = waiterRosterEntryButton;
+            serializedHud.FindProperty("waiterRosterEntryButtonText").objectReferenceValue = waiterRosterEntryLabel;
+            serializedHud.FindProperty("hireWaiterButton").objectReferenceValue = hireWaiterButton;
+            serializedHud.FindProperty("hireWaiterButtonText").objectReferenceValue = hireWaiterLabel;
             serializedHud.FindProperty("waiterDetailsContent").objectReferenceValue = waiterDetailsRect;
             serializedHud.FindProperty("waiterDetailsBackButton").objectReferenceValue = waiterBackButton;
             serializedHud.FindProperty("waiterDetailsBackButtonText").objectReferenceValue = waiterBackLabel;
@@ -611,6 +707,13 @@ namespace IdleRestaurant.Editor
             serializedHud.FindProperty("waiterPickupUpgradeButtonText").objectReferenceValue = waiterPickupLabel;
             serializedHud.FindProperty("waiterCharismaUpgradeButton").objectReferenceValue = waiterCharismaButton;
             serializedHud.FindProperty("waiterCharismaUpgradeButtonText").objectReferenceValue = waiterCharismaLabel;
+            serializedHud.FindProperty("categoryDetailsContent").objectReferenceValue = categoryDetailsRect;
+            serializedHud.FindProperty("categoryDetailsBackButton").objectReferenceValue = categoryBackButton;
+            serializedHud.FindProperty("categoryDetailsBackButtonText").objectReferenceValue = categoryBackLabel;
+            serializedHud.FindProperty("categoryDetailsTitleText").objectReferenceValue = categoryTitleText;
+            serializedHud.FindProperty("categoryDetailsSummaryText").objectReferenceValue = categorySummaryText;
+            serializedHud.FindProperty("categoryDetailsActionButton").objectReferenceValue = categoryActionButton;
+            serializedHud.FindProperty("categoryDetailsActionButtonText").objectReferenceValue = categoryActionLabel;
             serializedHud.FindProperty("menuPanel").objectReferenceValue = menuPanelRect;
             serializedHud.FindProperty("menuCloseButton").objectReferenceValue = menuCloseButton;
             serializedHud.FindProperty("menuCloseButtonText").objectReferenceValue = menuCloseLabel;
@@ -794,6 +897,168 @@ namespace IdleRestaurant.Editor
             rect.offsetMax = new Vector2(right, top);
         }
 
+        private static void LayoutCategoryGridButton(
+            RectTransform rect,
+            int index,
+            int columns,
+            int rows,
+            Vector2 buttonSize,
+            Vector2 spacing,
+            Vector2 centerOffset)
+        {
+            int column = index % columns;
+            int row = index / columns;
+            float totalWidth = columns * buttonSize.x + (columns - 1) * spacing.x;
+            float totalHeight = rows * buttonSize.y + (rows - 1) * spacing.y;
+            float startX = -totalWidth * 0.5f + buttonSize.x * 0.5f;
+            float startY = totalHeight * 0.5f - buttonSize.y * 0.5f;
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = buttonSize;
+            rect.anchoredPosition = new Vector2(
+                startX + column * (buttonSize.x + spacing.x),
+                startY - row * (buttonSize.y + spacing.y)) + centerOffset;
+        }
+
+        private static void ConfigureCategoryButton(Button button, Text label, string labelText, CategoryIconKind iconKind, Color backgroundColor)
+        {
+            if (button == null || label == null)
+            {
+                return;
+            }
+
+            Image buttonImage = button.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = backgroundColor;
+            }
+
+            RectTransform labelRect = Rect(label.gameObject);
+            labelRect.anchorMin = new Vector2(0f, 0f);
+            labelRect.anchorMax = new Vector2(1f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.anchoredPosition = new Vector2(0f, 16f);
+            labelRect.sizeDelta = new Vector2(0f, 34f);
+            label.alignment = TextAnchor.MiddleCenter;
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 16;
+            label.resizeTextMaxSize = 24;
+            label.raycastTarget = false;
+            label.text = labelText;
+
+            GameObject iconRoot = EnsureUiObject(button.gameObject, "CategoryIcon");
+            RectTransform iconRect = Rect(iconRoot);
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = new Vector2(0f, 20f);
+            iconRect.sizeDelta = new Vector2(96f, 96f);
+            ClearChildren(iconRoot.transform);
+            BuildCategoryIcon(iconRoot, iconKind);
+        }
+
+        private static void ConfigureWaiterRosterCard(Button button, Text label, string labelText, bool isHireCard, Color backgroundColor)
+        {
+            if (button == null || label == null)
+            {
+                return;
+            }
+
+            Image buttonImage = button.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = backgroundColor;
+            }
+
+            RectTransform labelRect = Rect(label.gameObject);
+            labelRect.anchorMin = new Vector2(0f, 0f);
+            labelRect.anchorMax = new Vector2(1f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.anchoredPosition = new Vector2(0f, 16f);
+            labelRect.sizeDelta = new Vector2(0f, 108f);
+            label.alignment = TextAnchor.UpperCenter;
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 13;
+            label.resizeTextMaxSize = 18;
+            label.raycastTarget = false;
+            label.text = labelText;
+
+            GameObject iconRoot = EnsureUiObject(button.gameObject, "RosterIcon");
+            RectTransform iconRect = Rect(iconRoot);
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = new Vector2(0f, 44f);
+            iconRect.sizeDelta = new Vector2(96f, 96f);
+            ClearChildren(iconRoot.transform);
+
+            if (isHireCard)
+            {
+                EnsureIconPiece(iconRoot, "Circle", new Vector2(0f, 6f), new Vector2(70f, 70f), new Color(0.95f, 0.97f, 1f, 0.18f));
+                EnsureIconPiece(iconRoot, "PlusVertical", new Vector2(0f, 6f), new Vector2(14f, 52f), new Color(0.95f, 0.97f, 1f, 1f));
+                EnsureIconPiece(iconRoot, "PlusHorizontal", new Vector2(0f, 6f), new Vector2(52f, 14f), new Color(0.95f, 0.97f, 1f, 1f));
+                EnsureIconPiece(iconRoot, "Accent", new Vector2(0f, -34f), new Vector2(34f, 6f), new Color(0.41f, 0.74f, 0.98f, 1f));
+            }
+            else
+            {
+                BuildCategoryIcon(iconRoot, CategoryIconKind.Waiter);
+                EnsureIconPiece(iconRoot, "Badge", new Vector2(0f, -34f), new Vector2(48f, 8f), new Color(0.91f, 0.79f, 0.32f, 1f));
+            }
+        }
+
+        private static void BuildCategoryIcon(GameObject root, CategoryIconKind iconKind)
+        {
+            switch (iconKind)
+            {
+                case CategoryIconKind.Waiter:
+                    EnsureIconPiece(root, "Head", new Vector2(-10f, 22f), new Vector2(22f, 22f), new Color(0.98f, 0.96f, 0.92f, 1f));
+                    EnsureIconPiece(root, "Body", new Vector2(-10f, -2f), new Vector2(20f, 34f), new Color(0.97f, 0.98f, 1f, 1f));
+                    EnsureIconPiece(root, "Arm", new Vector2(14f, 8f), new Vector2(28f, 8f), new Color(0.97f, 0.98f, 1f, 1f));
+                    EnsureIconPiece(root, "Tray", new Vector2(24f, 18f), new Vector2(34f, 8f), new Color(0.9f, 0.81f, 0.42f, 1f));
+                    break;
+
+                case CategoryIconKind.Furniture:
+                    EnsureIconPiece(root, "Top", new Vector2(0f, 16f), new Vector2(58f, 18f), new Color(0.79f, 0.59f, 0.38f, 1f));
+                    EnsureIconPiece(root, "LegLeftTop", new Vector2(-20f, -6f), new Vector2(8f, 28f), new Color(0.95f, 0.95f, 0.95f, 1f));
+                    EnsureIconPiece(root, "LegRightTop", new Vector2(20f, -6f), new Vector2(8f, 28f), new Color(0.95f, 0.95f, 0.95f, 1f));
+                    EnsureIconPiece(root, "LegLeftBottom", new Vector2(-20f, -30f), new Vector2(8f, 20f), new Color(0.95f, 0.95f, 0.95f, 1f));
+                    EnsureIconPiece(root, "LegRightBottom", new Vector2(20f, -30f), new Vector2(8f, 20f), new Color(0.95f, 0.95f, 0.95f, 1f));
+                    break;
+
+                case CategoryIconKind.Bar:
+                    EnsureIconPiece(root, "BottleBody", new Vector2(-14f, -2f), new Vector2(18f, 42f), new Color(0.74f, 0.91f, 1f, 1f));
+                    EnsureIconPiece(root, "BottleNeck", new Vector2(-14f, 26f), new Vector2(10f, 14f), new Color(0.74f, 0.91f, 1f, 1f));
+                    EnsureIconPiece(root, "Glass", new Vector2(16f, -4f), new Vector2(20f, 34f), new Color(0.95f, 0.97f, 1f, 1f));
+                    EnsureIconPiece(root, "Drink", new Vector2(16f, -14f), new Vector2(14f, 12f), new Color(0.96f, 0.68f, 0.28f, 1f));
+                    break;
+
+                default:
+                    EnsureIconPiece(root, "PotBody", new Vector2(0f, -2f), new Vector2(50f, 26f), new Color(0.95f, 0.96f, 0.97f, 1f));
+                    EnsureIconPiece(root, "PotLid", new Vector2(0f, 18f), new Vector2(38f, 8f), new Color(0.95f, 0.96f, 0.97f, 1f));
+                    EnsureIconPiece(root, "PotKnob", new Vector2(0f, 28f), new Vector2(10f, 10f), new Color(0.95f, 0.96f, 0.97f, 1f));
+                    EnsureIconPiece(root, "HandleLeft", new Vector2(-32f, -2f), new Vector2(12f, 8f), new Color(0.95f, 0.96f, 0.97f, 1f));
+                    EnsureIconPiece(root, "HandleRight", new Vector2(32f, -2f), new Vector2(12f, 8f), new Color(0.95f, 0.96f, 0.97f, 1f));
+                    break;
+            }
+        }
+
+        private static Image EnsureIconPiece(GameObject parent, string name, Vector2 anchoredPosition, Vector2 size, Color color)
+        {
+            Image piece = EnsureImageChild(parent, name, color);
+            RectTransform pieceRect = Rect(piece.gameObject);
+            pieceRect.anchorMin = new Vector2(0.5f, 0.5f);
+            pieceRect.anchorMax = new Vector2(0.5f, 0.5f);
+            pieceRect.pivot = new Vector2(0.5f, 0.5f);
+            pieceRect.anchoredPosition = anchoredPosition;
+            pieceRect.sizeDelta = size;
+            piece.raycastTarget = false;
+            return piece;
+        }
+
         private static Text EnsureText(GameObject parent, string name, int fontSize, TextAnchor alignment, FontStyle fontStyle)
         {
             GameObject textObject = EnsureUiObject(parent, name);
@@ -913,11 +1178,62 @@ namespace IdleRestaurant.Editor
             return Resources.Load<Sprite>("UI/RoundedRect");
         }
 
+        private static string GetCategoryBackLabel()
+        {
+            return LocalizationService.IsRussian ? "Назад" : "Back";
+        }
+
+        private static string GetWaiterCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Официант" : "Waiter";
+        }
+
+        private static string GetFurnitureCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Мебель" : "Furniture";
+        }
+
+        private static string GetBarCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Бар" : "Bar";
+        }
+
+        private static string GetKitchenCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Кухня" : "Kitchen";
+        }
+
+        private static string GetFurniturePreviewSummary()
+        {
+            return LocalizationService.IsRussian
+                ? "Столы ур.0\nДоход x1.00  Чаевые x1.00"
+                : "Tables Lv.0\nIncome x1.00  Tips x1.00";
+        }
+
+        private static string GetFurniturePreviewAction()
+        {
+            return LocalizationService.IsRussian
+                ? "Столы ур.0  Купить $120\nДоход x1.00"
+                : "Tables Lv.0  Buy $120\nIncome x1.00";
+        }
+
         private static string GetWaiterEntryLabel()
         {
             return LocalizationService.IsRussian
                 ? "Официант 1 (Анатолий)\nОткрыть характеристики"
                 : "Waiter 1 (Anatoly)\nOpen stats";
+        }
+
+        private static string GetWaiterListTitle()
+        {
+            return LocalizationService.IsRussian ? "Официанты" : "Waiters";
+        }
+
+        private static string GetHireWaiterLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Нанять\nНовый слот\nСкоро"
+                : "Hire\nNew Slot\nSoon";
         }
 
         private static string GetWaiterBackLabel()

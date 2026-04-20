@@ -29,6 +29,8 @@ namespace IdleRestaurant.Adventure
 
         public float MaxHealth => maxHealth;
 
+        public float AttackDamage => attackDamage;
+
         public float HealthNormalized => maxHealth > 0f ? currentHealth / maxHealth : 0f;
 
         public void Configure(

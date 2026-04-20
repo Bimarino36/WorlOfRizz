@@ -71,7 +71,13 @@ namespace IdleRestaurant.Adventure
 
         public float PlayerMaxHealth => player != null ? player.MaxHealth : playerHealth;
 
+        public float PlayerDamage => player != null ? player.AttackDamage : playerDamage;
+
         public float PlayerHealthNormalized => player != null ? player.HealthNormalized : 0f;
+
+        public string PlayerDisplayName => player != null && !string.IsNullOrWhiteSpace(player.DisplayName)
+            ? player.DisplayName
+            : "Hero";
 
         public bool CanUseSkill => !runFinished && player != null && player.IsAlive && AliveEnemyCount > 0 && SkillCooldownRemaining <= 0f;
 

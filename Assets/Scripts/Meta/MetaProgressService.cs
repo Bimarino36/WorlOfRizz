@@ -51,6 +51,23 @@ namespace IdleRestaurant.Meta
     }
 
     [Serializable]
+    public struct AdventureInventoryItemData
+    {
+        public string Id;
+        public string DisplayName;
+        public string Description;
+        public int Quantity;
+
+        public AdventureInventoryItemData(string id, string displayName, string description, int quantity)
+        {
+            Id = id;
+            DisplayName = displayName;
+            Description = description;
+            Quantity = quantity;
+        }
+    }
+
+    [Serializable]
     public struct MetaProgressData
     {
         public int DataVersion;
@@ -69,6 +86,7 @@ namespace IdleRestaurant.Meta
         public AdventureRewardResult LastAdventureReward;
         public string[] CompletedRestaurantSpecialOrders;
         public string[] StudiedRestaurantRecipes;
+        public AdventureInventoryItemData[] AdventureInventory;
         public FarmPlotData[] FarmPlots;
     }
 
@@ -85,7 +103,7 @@ namespace IdleRestaurant.Meta
 
     public static class MetaProgressService
     {
-        private const int CurrentDataVersion = 2;
+        private const int CurrentDataVersion = 3;
         private const string SaveKey = "IdleRestaurant.MetaProgress";
 
         public static MetaProgressData GetData()
@@ -143,6 +161,37 @@ namespace IdleRestaurant.Meta
             }
 
             data.LastAdventureReward = result;
+            Save(data);
+        }
+
+        public static AdventureInventoryItemData[] GetAdventureInventory()
+        {
+            MetaProgressData data = GetData();
+            if (NormalizeAdventureInventory(ref data))
+            {
+                Save(data);
+            }
+
+            if (data.AdventureInventory == null || data.AdventureInventory.Length == 0)
+            {
+                return Array.Empty<AdventureInventoryItemData>();
+            }
+
+            AdventureInventoryItemData[] result = new AdventureInventoryItemData[data.AdventureInventory.Length];
+            Array.Copy(data.AdventureInventory, result, data.AdventureInventory.Length);
+            return result;
+        }
+
+        public static void AddAdventureInventoryItem(string itemId, string displayName, int quantity, string description = "")
+        {
+            if (string.IsNullOrWhiteSpace(itemId) || quantity <= 0)
+            {
+                return;
+            }
+
+            MetaProgressData data = GetData();
+            NormalizeAdventureInventory(ref data);
+            UpsertAdventureInventoryItem(ref data, itemId, displayName, description, quantity);
             Save(data);
         }
 
@@ -425,6 +474,12 @@ namespace IdleRestaurant.Meta
                 }
             }
 
+            if (previousVersion < 3 && data.AdventureInventory == null)
+            {
+                data.AdventureInventory = Array.Empty<AdventureInventoryItemData>();
+                changed = true;
+            }
+
             if (!data.RestaurantSceneUnlocked)
             {
                 data.RestaurantSceneUnlocked = true;
@@ -444,8 +499,46 @@ namespace IdleRestaurant.Meta
                 changed = true;
             }
 
+            changed |= NormalizeAdventureInventory(ref data);
             changed |= NormalizeFarmPlots(ref data);
             return changed;
+        }
+
+        private static bool NormalizeAdventureInventory(ref MetaProgressData data)
+        {
+            if (data.AdventureInventory == null)
+            {
+                data.AdventureInventory = Array.Empty<AdventureInventoryItemData>();
+                return true;
+            }
+
+            bool changed = false;
+            List<AdventureInventoryItemData> normalizedItems = new List<AdventureInventoryItemData>(data.AdventureInventory.Length);
+            for (int index = 0; index < data.AdventureInventory.Length; index++)
+            {
+                AdventureInventoryItemData item = data.AdventureInventory[index];
+                if (string.IsNullOrWhiteSpace(item.Id) || item.Quantity <= 0)
+                {
+                    changed = true;
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.DisplayName))
+                {
+                    item.DisplayName = item.Id;
+                    changed = true;
+                }
+
+                normalizedItems.Add(item);
+            }
+
+            if (!changed && normalizedItems.Count == data.AdventureInventory.Length)
+            {
+                return false;
+            }
+
+            data.AdventureInventory = normalizedItems.ToArray();
+            return true;
         }
 
         private static bool EnsureFarmPlots(ref MetaProgressData data, int plotCount)
@@ -674,6 +767,44 @@ namespace IdleRestaurant.Meta
 
             nextIds[currentCount] = targetId;
             recordedIds = nextIds;
+        }
+
+        private static void UpsertAdventureInventoryItem(
+            ref MetaProgressData data,
+            string itemId,
+            string displayName,
+            string description,
+            int quantity)
+        {
+            AdventureInventoryItemData[] items = data.AdventureInventory ?? Array.Empty<AdventureInventoryItemData>();
+            for (int index = 0; index < items.Length; index++)
+            {
+                if (!string.Equals(items[index].Id, itemId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                AdventureInventoryItemData updatedItem = items[index];
+                updatedItem.DisplayName = string.IsNullOrWhiteSpace(displayName) ? updatedItem.DisplayName : displayName;
+                updatedItem.Description = string.IsNullOrWhiteSpace(description) ? updatedItem.Description : description;
+                updatedItem.Quantity += quantity;
+                items[index] = updatedItem;
+                data.AdventureInventory = items;
+                return;
+            }
+
+            AdventureInventoryItemData[] nextItems = new AdventureInventoryItemData[items.Length + 1];
+            if (items.Length > 0)
+            {
+                Array.Copy(items, nextItems, items.Length);
+            }
+
+            nextItems[items.Length] = new AdventureInventoryItemData(
+                itemId,
+                string.IsNullOrWhiteSpace(displayName) ? itemId : displayName,
+                description ?? string.Empty,
+                quantity);
+            data.AdventureInventory = nextItems;
         }
 
         private static long GetCurrentUnixSeconds()

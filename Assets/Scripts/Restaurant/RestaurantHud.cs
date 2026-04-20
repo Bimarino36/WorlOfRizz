@@ -11,6 +11,14 @@ namespace IdleRestaurant.Gameplay
 {
     public sealed class RestaurantHud : MonoBehaviour
     {
+        private enum UpgradeDetailsCategory
+        {
+            None = 0,
+            Furniture = 1,
+            Kitchen = 2,
+            Bar = 3
+        }
+
         private const float NotificationDuration = 2.25f;
         private const float NotificationFadeDuration = 0.3f;
         private const float UpgradesPanelHiddenOffsetY = -56f;
@@ -59,6 +67,14 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private Text kitchenUpgradeButtonText;
         [SerializeField] private Button barUpgradeButton;
         [SerializeField] private Text barUpgradeButtonText;
+        [SerializeField] private RectTransform waiterListContent;
+        [SerializeField] private Button waiterListBackButton;
+        [SerializeField] private Text waiterListBackButtonText;
+        [SerializeField] private Text waiterListTitleText;
+        [SerializeField] private Button waiterRosterEntryButton;
+        [SerializeField] private Text waiterRosterEntryButtonText;
+        [SerializeField] private Button hireWaiterButton;
+        [SerializeField] private Text hireWaiterButtonText;
         [SerializeField] private RectTransform waiterDetailsContent;
         [SerializeField] private Button waiterDetailsBackButton;
         [SerializeField] private Text waiterDetailsBackButtonText;
@@ -74,6 +90,13 @@ namespace IdleRestaurant.Gameplay
         [SerializeField] private Text waiterPickupUpgradeButtonText;
         [SerializeField] private Button waiterCharismaUpgradeButton;
         [SerializeField] private Text waiterCharismaUpgradeButtonText;
+        [SerializeField] private RectTransform categoryDetailsContent;
+        [SerializeField] private Button categoryDetailsBackButton;
+        [SerializeField] private Text categoryDetailsBackButtonText;
+        [SerializeField] private Text categoryDetailsTitleText;
+        [SerializeField] private Text categoryDetailsSummaryText;
+        [SerializeField] private Button categoryDetailsActionButton;
+        [SerializeField] private Text categoryDetailsActionButtonText;
         [SerializeField] private RectTransform menuPanel;
         [SerializeField] private Button menuCloseButton;
         [SerializeField] private Text menuCloseButtonText;
@@ -95,7 +118,9 @@ namespace IdleRestaurant.Gameplay
 
         private bool buttonHandlersBound;
         private bool upgradesPanelVisible;
+        private bool waiterListVisible;
         private bool waiterDetailsVisible;
+        private UpgradeDetailsCategory selectedUpgradeCategory;
         private bool menuPanelVisible;
         private bool settingsPanelVisible;
         private bool offlinePopupVisible;
@@ -125,7 +150,9 @@ namespace IdleRestaurant.Gameplay
             CacheSettingsSprites();
             ApplySoundState();
             SetSettingsPanelVisible(false);
+            waiterListVisible = false;
             waiterDetailsVisible = false;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
             ForceUpgradesPanelState(false);
             SetMenuPanelVisible(false);
             SetOfflinePopupVisible(false);
@@ -138,7 +165,9 @@ namespace IdleRestaurant.Gameplay
             CaptureNotificationBaseColors();
             buttonHandlersBound = false;
             upgradesPanelVisible = false;
+            waiterListVisible = false;
             waiterDetailsVisible = false;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
             menuPanelVisible = false;
             settingsPanelVisible = false;
             offlinePopupVisible = false;
@@ -402,6 +431,46 @@ namespace IdleRestaurant.Gameplay
                 barUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/MainContent/BarUpgradeButton/Label");
             }
 
+            if (waiterListContent == null)
+            {
+                waiterListContent = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent");
+            }
+
+            if (waiterListBackButton == null)
+            {
+                waiterListBackButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/BackButton");
+            }
+
+            if (waiterListBackButtonText == null)
+            {
+                waiterListBackButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/BackButton/Label");
+            }
+
+            if (waiterListTitleText == null)
+            {
+                waiterListTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/TitleText");
+            }
+
+            if (waiterRosterEntryButton == null)
+            {
+                waiterRosterEntryButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/WaiterRosterEntryButton");
+            }
+
+            if (waiterRosterEntryButtonText == null)
+            {
+                waiterRosterEntryButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/WaiterRosterEntryButton/Label");
+            }
+
+            if (hireWaiterButton == null)
+            {
+                hireWaiterButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/HireWaiterButton");
+            }
+
+            if (hireWaiterButtonText == null)
+            {
+                hireWaiterButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterListContent/HireWaiterButton/Label");
+            }
+
             if (waiterDetailsContent == null)
             {
                 waiterDetailsContent = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent");
@@ -475,6 +544,41 @@ namespace IdleRestaurant.Gameplay
             if (waiterCharismaUpgradeButtonText == null)
             {
                 waiterCharismaUpgradeButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/WaiterDetailsContent/ButtonsRoot/CharismaUpgradeButton/Label");
+            }
+
+            if (categoryDetailsContent == null)
+            {
+                categoryDetailsContent = FindRectTransform("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent");
+            }
+
+            if (categoryDetailsBackButton == null)
+            {
+                categoryDetailsBackButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/BackButton");
+            }
+
+            if (categoryDetailsBackButtonText == null)
+            {
+                categoryDetailsBackButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/BackButton/Label");
+            }
+
+            if (categoryDetailsTitleText == null)
+            {
+                categoryDetailsTitleText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/TitleText");
+            }
+
+            if (categoryDetailsSummaryText == null)
+            {
+                categoryDetailsSummaryText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/SummaryText");
+            }
+
+            if (categoryDetailsActionButton == null)
+            {
+                categoryDetailsActionButton = FindComponent<Button>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/ActionButton");
+            }
+
+            if (categoryDetailsActionButtonText == null)
+            {
+                categoryDetailsActionButtonText = FindComponent<Text>("RuntimeHudCanvas/SafeAreaRoot/UpgradesPanel/CategoryDetailsContent/ActionButton/Label");
             }
 
             if (menuPanel == null)
@@ -630,12 +734,27 @@ namespace IdleRestaurant.Gameplay
 
             if (tableUpgradeButton != null)
             {
-                RebindButton(tableUpgradeButton, HandleTableUpgradePressed);
+                RebindButton(tableUpgradeButton, HandleFurnitureCategoryPressed);
             }
 
             if (waiterUpgradeButton != null)
             {
-                RebindButton(waiterUpgradeButton, HandleWaiterUpgradePressed);
+                RebindButton(waiterUpgradeButton, HandleWaiterCategoryPressed);
+            }
+
+            if (waiterListBackButton != null)
+            {
+                RebindButton(waiterListBackButton, HandleWaiterListBackPressed);
+            }
+
+            if (waiterRosterEntryButton != null)
+            {
+                RebindButton(waiterRosterEntryButton, HandleWaiterRosterEntryPressed);
+            }
+
+            if (hireWaiterButton != null)
+            {
+                RebindButton(hireWaiterButton, HandleHireWaiterPressed);
             }
 
             if (waiterDetailsBackButton != null)
@@ -670,12 +789,22 @@ namespace IdleRestaurant.Gameplay
 
             if (kitchenUpgradeButton != null)
             {
-                RebindButton(kitchenUpgradeButton, HandleKitchenUpgradePressed);
+                RebindButton(kitchenUpgradeButton, HandleKitchenCategoryPressed);
             }
 
             if (barUpgradeButton != null)
             {
-                RebindButton(barUpgradeButton, HandleBarUpgradePressed);
+                RebindButton(barUpgradeButton, HandleBarCategoryPressed);
+            }
+
+            if (categoryDetailsBackButton != null)
+            {
+                RebindButton(categoryDetailsBackButton, HandleCategoryDetailsBackPressed);
+            }
+
+            if (categoryDetailsActionButton != null)
+            {
+                RebindButton(categoryDetailsActionButton, HandleCategoryDetailsActionPressed);
             }
 
             if (upgradesToggleButton != null)
@@ -790,83 +919,79 @@ namespace IdleRestaurant.Gameplay
 
         private void UpdateUpgradeButtons()
         {
+            UpdateOverviewCategoryButtons();
+            UpdateWaiterListPanel();
             UpdateWaiterEntryButton();
             UpdateWaiterDetailsPanel();
+            UpdateCategoryDetailsPanel();
 
             if (runtime == null)
             {
                 return;
             }
+        }
 
-            bool canAffordTableUpgrade = runtime.CanAffordTableRevenueUpgrade();
-            if (tableUpgradeButton != null)
+        private void UpdateOverviewCategoryButtons()
+        {
+            UpdateOverviewCategoryButton(waiterUpgradeButton, waiterUpgradeButtonText, GetWaiterCategoryLabel());
+            UpdateOverviewCategoryButton(tableUpgradeButton, tableUpgradeButtonText, GetFurnitureCategoryLabel());
+            UpdateOverviewCategoryButton(barUpgradeButton, barUpgradeButtonText, GetBarCategoryLabel());
+            UpdateOverviewCategoryButton(kitchenUpgradeButton, kitchenUpgradeButtonText, GetKitchenCategoryLabel());
+        }
+
+        private static void UpdateOverviewCategoryButton(Button button, Text buttonText, string label)
+        {
+            if (button != null)
             {
-                tableUpgradeButton.interactable = true;
-                SetButtonVisual(tableUpgradeButton, tableUpgradeButtonText, canAffordTableUpgrade);
+                button.interactable = true;
             }
 
-            if (tableUpgradeButtonText != null)
+            if (buttonText != null)
             {
-                tableUpgradeButtonText.text =
-                    LocalizationService.Format(
-                        "rest.upgrade.tables",
-                        runtime.TableRevenueLevel,
-                        canAffordTableUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
-                        runtime.NextTableRevenueUpgradeCost,
-                        runtime.TableRevenueMultiplier.ToString("0.00"));
-            }
-
-            bool canAffordKitchenUpgrade = runtime.CanAffordKitchenSpeedUpgrade();
-            if (kitchenUpgradeButton != null)
-            {
-                kitchenUpgradeButton.interactable = true;
-                SetButtonVisual(kitchenUpgradeButton, kitchenUpgradeButtonText, canAffordKitchenUpgrade);
-            }
-
-            if (kitchenUpgradeButtonText != null)
-            {
-                kitchenUpgradeButtonText.text =
-                    LocalizationService.Format(
-                        "rest.upgrade.kitchen",
-                        runtime.KitchenSpeedLevel,
-                        canAffordKitchenUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
-                        runtime.NextKitchenSpeedUpgradeCost,
-                        runtime.KitchenSpeedMultiplier.ToString("0.00"));
-            }
-
-            bool canAffordBarUpgrade = runtime.CanAffordBarSpeedUpgrade();
-            if (barUpgradeButton != null)
-            {
-                barUpgradeButton.interactable = true;
-                SetButtonVisual(barUpgradeButton, barUpgradeButtonText, canAffordBarUpgrade);
-            }
-
-            if (barUpgradeButtonText != null)
-            {
-                barUpgradeButtonText.text =
-                    LocalizationService.Format(
-                        "rest.upgrade.bar",
-                        runtime.BarSpeedLevel,
-                        canAffordBarUpgrade ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
-                        runtime.NextBarSpeedUpgradeCost,
-                        runtime.BarSpeedMultiplier.ToString("0.00"));
+                buttonText.text = label;
+                buttonText.color = new Color(0.98f, 0.98f, 0.98f, 1f);
             }
         }
 
         private void UpdateWaiterEntryButton()
         {
-            if (waiterUpgradeButton != null)
+            UpdateOverviewCategoryButton(waiterUpgradeButton, waiterUpgradeButtonText, GetWaiterCategoryLabel());
+        }
+
+        private void UpdateWaiterListPanel()
+        {
+            if (waiterListBackButton != null)
             {
-                waiterUpgradeButton.interactable = true;
-                SetButtonVisual(waiterUpgradeButton, waiterUpgradeButtonText, true);
+                waiterListBackButton.interactable = true;
+                SetButtonVisual(waiterListBackButton, waiterListBackButtonText, true);
             }
 
-            if (waiterUpgradeButtonText == null)
+            if (waiterListBackButtonText != null)
             {
-                return;
+                waiterListBackButtonText.text = GetWaiterListBackButtonLabel();
             }
 
-            waiterUpgradeButtonText.text = BuildWaiterEntryLabel();
+            if (waiterListTitleText != null)
+            {
+                waiterListTitleText.text = GetWaiterListTitle();
+            }
+
+            UpdateRosterCardButton(waiterRosterEntryButton, waiterRosterEntryButtonText, BuildWaiterRosterCardLabel());
+            UpdateRosterCardButton(hireWaiterButton, hireWaiterButtonText, GetHireWaiterLabel());
+        }
+
+        private static void UpdateRosterCardButton(Button button, Text buttonText, string label)
+        {
+            if (button != null)
+            {
+                button.interactable = true;
+            }
+
+            if (buttonText != null)
+            {
+                buttonText.text = label;
+                buttonText.color = new Color(0.98f, 0.98f, 0.98f, 1f);
+            }
         }
 
         private void UpdateWaiterDetailsPanel()
@@ -919,6 +1044,42 @@ namespace IdleRestaurant.Gameplay
                 BuildWaiterCharismaUpgradeLabel());
         }
 
+        private void UpdateCategoryDetailsPanel()
+        {
+            if (categoryDetailsBackButton != null)
+            {
+                categoryDetailsBackButton.interactable = true;
+                SetButtonVisual(categoryDetailsBackButton, categoryDetailsBackButtonText, true);
+            }
+
+            if (categoryDetailsBackButtonText != null)
+            {
+                categoryDetailsBackButtonText.text = GetUpgradeDetailsBackLabel();
+            }
+
+            if (categoryDetailsTitleText != null)
+            {
+                categoryDetailsTitleText.text = BuildCategoryDetailsTitleLabel();
+            }
+
+            if (categoryDetailsSummaryText != null)
+            {
+                categoryDetailsSummaryText.text = BuildCategoryDetailsSummaryLabel();
+            }
+
+            bool canAffordSelectedUpgrade = CanAffordSelectedCategoryUpgrade();
+            if (categoryDetailsActionButton != null)
+            {
+                categoryDetailsActionButton.interactable = selectedUpgradeCategory != UpgradeDetailsCategory.None;
+                SetButtonVisual(categoryDetailsActionButton, categoryDetailsActionButtonText, canAffordSelectedUpgrade);
+            }
+
+            if (categoryDetailsActionButtonText != null)
+            {
+                categoryDetailsActionButtonText.text = BuildCategoryDetailsActionLabel();
+            }
+        }
+
         private void UpdateWaiterUpgradeButton(Button button, Text buttonText, bool canAfford, string label)
         {
             if (button != null)
@@ -933,37 +1094,45 @@ namespace IdleRestaurant.Gameplay
             }
         }
 
-        private void HandleTableUpgradePressed()
+        private void HandleFurnitureCategoryPressed()
         {
-            if (runtime == null)
-            {
-                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
-                return;
-            }
-
-            if (!runtime.TryPurchaseTableRevenueUpgrade())
-            {
-                ShowNotification(
-                    LocalizationService.Format("rest.notify.need_table_upgrade", runtime.NextTableRevenueUpgradeCost),
-                    RestaurantNotificationType.Warning);
-            }
+            ShowCategoryDetails(UpgradeDetailsCategory.Furniture);
         }
 
-        private void HandleWaiterUpgradePressed()
+        private void HandleWaiterCategoryPressed()
         {
-            if (runtime == null)
-            {
-                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
-                return;
-            }
-
-            waiterDetailsVisible = true;
+            waiterListVisible = true;
+            waiterDetailsVisible = false;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
+            UpdateWaiterListPanel();
             UpdateUpgradePanelContentState();
+        }
+
+        private void HandleWaiterRosterEntryPressed()
+        {
+            waiterListVisible = false;
+            waiterDetailsVisible = true;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
+            UpdateWaiterDetailsPanel();
+            UpdateUpgradePanelContentState();
+        }
+
+        private void HandleWaiterListBackPressed()
+        {
+            ShowUpgradesOverview();
+        }
+
+        private void HandleHireWaiterPressed()
+        {
+            ShowNotification(BuildHireWaiterSoonMessage(), RestaurantNotificationType.Info);
         }
 
         private void HandleWaiterDetailsBackPressed()
         {
+            waiterListVisible = true;
             waiterDetailsVisible = false;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
+            UpdateWaiterListPanel();
             UpdateUpgradePanelContentState();
         }
 
@@ -1037,7 +1206,22 @@ namespace IdleRestaurant.Gameplay
             }
         }
 
-        private void HandleKitchenUpgradePressed()
+        private void HandleKitchenCategoryPressed()
+        {
+            ShowCategoryDetails(UpgradeDetailsCategory.Kitchen);
+        }
+
+        private void HandleBarCategoryPressed()
+        {
+            ShowCategoryDetails(UpgradeDetailsCategory.Bar);
+        }
+
+        private void HandleCategoryDetailsBackPressed()
+        {
+            ShowUpgradesOverview();
+        }
+
+        private void HandleCategoryDetailsActionPressed()
         {
             if (runtime == null)
             {
@@ -1045,28 +1229,53 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            if (!runtime.TryPurchaseKitchenSpeedUpgrade())
+            switch (selectedUpgradeCategory)
             {
-                ShowNotification(
-                    LocalizationService.Format("rest.notify.need_kitchen_upgrade", runtime.NextKitchenSpeedUpgradeCost),
-                    RestaurantNotificationType.Warning);
+                case UpgradeDetailsCategory.Furniture:
+                    if (!runtime.TryPurchaseTableRevenueUpgrade())
+                    {
+                        ShowNotification(
+                            LocalizationService.Format("rest.notify.need_table_upgrade", runtime.NextTableRevenueUpgradeCost),
+                            RestaurantNotificationType.Warning);
+                    }
+                    break;
+
+                case UpgradeDetailsCategory.Kitchen:
+                    if (!runtime.TryPurchaseKitchenSpeedUpgrade())
+                    {
+                        ShowNotification(
+                            LocalizationService.Format("rest.notify.need_kitchen_upgrade", runtime.NextKitchenSpeedUpgradeCost),
+                            RestaurantNotificationType.Warning);
+                    }
+                    break;
+
+                case UpgradeDetailsCategory.Bar:
+                    if (!runtime.TryPurchaseBarSpeedUpgrade())
+                    {
+                        ShowNotification(
+                            LocalizationService.Format("rest.notify.need_bar_upgrade", runtime.NextBarSpeedUpgradeCost),
+                            RestaurantNotificationType.Warning);
+                    }
+                    break;
             }
         }
 
-        private void HandleBarUpgradePressed()
+        private void ShowCategoryDetails(UpgradeDetailsCategory category)
         {
-            if (runtime == null)
-            {
-                ShowNotification(LocalizationService.Get("rest.notify.runtime_not_ready"), RestaurantNotificationType.Warning);
-                return;
-            }
+            waiterListVisible = false;
+            waiterDetailsVisible = false;
+            selectedUpgradeCategory = category;
+            UpdateCategoryDetailsPanel();
+            UpdateUpgradePanelContentState();
+        }
 
-            if (!runtime.TryPurchaseBarSpeedUpgrade())
-            {
-                ShowNotification(
-                    LocalizationService.Format("rest.notify.need_bar_upgrade", runtime.NextBarSpeedUpgradeCost),
-                    RestaurantNotificationType.Warning);
-            }
+        private void ShowUpgradesOverview()
+        {
+            waiterListVisible = false;
+            waiterDetailsVisible = false;
+            selectedUpgradeCategory = UpgradeDetailsCategory.None;
+            UpdateUpgradeButtons();
+            UpdateUpgradePanelContentState();
         }
 
         private void HandleSettingsPressed()
@@ -1094,9 +1303,8 @@ namespace IdleRestaurant.Gameplay
 
             SetSettingsPanelVisible(false);
             SetMenuPanelVisible(false);
-            waiterDetailsVisible = false;
+            ShowUpgradesOverview();
             SetUpgradesPanelVisible(!upgradesPanelVisible);
-            UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
         }
 
@@ -1109,7 +1317,7 @@ namespace IdleRestaurant.Gameplay
 
             SetSettingsPanelVisible(false);
             SetUpgradesPanelVisible(false);
-            waiterDetailsVisible = false;
+            ShowUpgradesOverview();
             SetMenuPanelVisible(!menuPanelVisible);
         }
 
@@ -1172,9 +1380,8 @@ namespace IdleRestaurant.Gameplay
                 return;
             }
 
-            waiterDetailsVisible = false;
+            ShowUpgradesOverview();
             SetUpgradesPanelVisible(false);
-            UpdateUpgradePanelContentState();
             UpdateUpgradesToggleLabel();
         }
 
@@ -1273,8 +1480,7 @@ namespace IdleRestaurant.Gameplay
             }
 
             ForceUpgradesPanelState(false);
-            waiterDetailsVisible = false;
-            UpdateUpgradePanelContentState();
+            ShowUpgradesOverview();
             SetMenuPanelVisible(false);
             SetOfflinePopupVisible(true);
             UpdateUpgradesToggleLabel();
@@ -1357,7 +1563,7 @@ namespace IdleRestaurant.Gameplay
             upgradesPanelVisible = visible;
             if (!visible)
             {
-                waiterDetailsVisible = false;
+                ShowUpgradesOverview();
             }
 
             EnsureUpgradesPanelAnimationSetup();
@@ -1503,16 +1709,28 @@ namespace IdleRestaurant.Gameplay
 
         private void UpdateUpgradePanelContentState()
         {
+            bool showWaiterList = upgradesPanelVisible && waiterListVisible && !waiterDetailsVisible;
             bool showWaiterDetails = upgradesPanelVisible && waiterDetailsVisible;
+            bool showCategoryDetails = upgradesPanelVisible && selectedUpgradeCategory != UpgradeDetailsCategory.None;
 
             if (upgradesMainContent != null)
             {
-                upgradesMainContent.gameObject.SetActive(upgradesPanelVisible && !showWaiterDetails);
+                upgradesMainContent.gameObject.SetActive(upgradesPanelVisible && !showWaiterList && !showWaiterDetails && !showCategoryDetails);
+            }
+
+            if (waiterListContent != null)
+            {
+                waiterListContent.gameObject.SetActive(showWaiterList);
             }
 
             if (waiterDetailsContent != null)
             {
                 waiterDetailsContent.gameObject.SetActive(showWaiterDetails);
+            }
+
+            if (categoryDetailsContent != null)
+            {
+                categoryDetailsContent.gameObject.SetActive(showCategoryDetails);
             }
         }
 
@@ -1525,6 +1743,47 @@ namespace IdleRestaurant.Gameplay
             }
 
             return "Waiter 1 (" + waiterName + ")\nOpen stats";
+        }
+
+        private string BuildWaiterRosterCardLabel()
+        {
+            string waiterName = GetWaiterDisplayName();
+            string waiterState = runtime != null && runtime.Waiter != null && !string.IsNullOrWhiteSpace(runtime.Waiter.CurrentTaskLabel)
+                ? runtime.Waiter.CurrentTaskLabel
+                : LocalizationService.Get("rest.waiter.task.idle");
+
+            if (runtime == null)
+            {
+                if (LocalizationService.IsRussian)
+                {
+                    return waiterName +
+                        "\n" + waiterState +
+                        "\nСкорость x1.00  Заказ x1.00" +
+                        "\nЧаевые x1.00  Лояльн. +0";
+                }
+
+                return waiterName +
+                    "\n" + waiterState +
+                    "\nSpeed x1.00  Orders x1.00" +
+                    "\nTips x1.00  Loyalty +0";
+            }
+
+            if (LocalizationService.IsRussian)
+            {
+                return waiterName +
+                    "\n" + waiterState +
+                    "\nСкорость x" + runtime.WaiterSpeedMultiplier.ToString("0.00") +
+                    "  Заказ x" + runtime.WaiterTakeOrderSpeedMultiplier.ToString("0.00") +
+                    "\nЧаевые x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                    "  Лояльн. +" + runtime.WaiterCharismaLoyaltyBonus;
+            }
+
+            return waiterName +
+                "\n" + waiterState +
+                "\nSpeed x" + runtime.WaiterSpeedMultiplier.ToString("0.00") +
+                "  Orders x" + runtime.WaiterTakeOrderSpeedMultiplier.ToString("0.00") +
+                "\nTips x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
+                "  Loyalty +" + runtime.WaiterCharismaLoyaltyBonus;
         }
 
         private string BuildWaiterTitleLabel()
@@ -1562,6 +1821,181 @@ namespace IdleRestaurant.Gameplay
                 "  Pickup x" + runtime.WaiterPickupSpeedMultiplier.ToString("0.00") + "\n" +
                 "Tips x" + runtime.WaiterCharismaTipMultiplier.ToString("0.00") +
                 "  Loyalty +" + runtime.WaiterCharismaLoyaltyBonus;
+        }
+
+        private string BuildCategoryDetailsTitleLabel()
+        {
+            switch (selectedUpgradeCategory)
+            {
+                case UpgradeDetailsCategory.Furniture:
+                    return GetFurnitureCategoryLabel();
+                case UpgradeDetailsCategory.Kitchen:
+                    return GetKitchenCategoryLabel();
+                case UpgradeDetailsCategory.Bar:
+                    return GetBarCategoryLabel();
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private string BuildCategoryDetailsSummaryLabel()
+        {
+            switch (selectedUpgradeCategory)
+            {
+                case UpgradeDetailsCategory.Furniture:
+                    return BuildFurnitureSummaryLabel();
+                case UpgradeDetailsCategory.Kitchen:
+                    return BuildKitchenSummaryLabel();
+                case UpgradeDetailsCategory.Bar:
+                    return BuildBarSummaryLabel();
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private string BuildCategoryDetailsActionLabel()
+        {
+            switch (selectedUpgradeCategory)
+            {
+                case UpgradeDetailsCategory.Furniture:
+                    return BuildFurnitureUpgradeActionLabel();
+                case UpgradeDetailsCategory.Kitchen:
+                    return BuildKitchenUpgradeActionLabel();
+                case UpgradeDetailsCategory.Bar:
+                    return BuildBarUpgradeActionLabel();
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private bool CanAffordSelectedCategoryUpgrade()
+        {
+            if (runtime == null)
+            {
+                return false;
+            }
+
+            switch (selectedUpgradeCategory)
+            {
+                case UpgradeDetailsCategory.Furniture:
+                    return runtime.CanAffordTableRevenueUpgrade();
+                case UpgradeDetailsCategory.Kitchen:
+                    return runtime.CanAffordKitchenSpeedUpgrade();
+                case UpgradeDetailsCategory.Bar:
+                    return runtime.CanAffordBarSpeedUpgrade();
+                default:
+                    return false;
+            }
+        }
+
+        private string BuildFurnitureSummaryLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Столы ур.0\nДоход x1.00  Чаевые x1.00"
+                    : "Tables Lv.0\nIncome x1.00  Tips x1.00";
+            }
+
+            if (LocalizationService.IsRussian)
+            {
+                return "Столы ур." + runtime.TableRevenueLevel +
+                    "\nДоход x" + runtime.TableRevenueMultiplier.ToString("0.00") +
+                    "  Чаевые x" + runtime.TableTipMultiplier.ToString("0.00");
+            }
+
+            return "Tables Lv." + runtime.TableRevenueLevel +
+                "\nIncome x" + runtime.TableRevenueMultiplier.ToString("0.00") +
+                "  Tips x" + runtime.TableTipMultiplier.ToString("0.00");
+        }
+
+        private string BuildKitchenSummaryLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Кухня ур.0\nСкорость x1.00"
+                    : "Kitchen Lv.0\nSpeed x1.00";
+            }
+
+            if (LocalizationService.IsRussian)
+            {
+                return "Кухня ур." + runtime.KitchenSpeedLevel +
+                    "\nСкорость x" + runtime.KitchenSpeedMultiplier.ToString("0.00");
+            }
+
+            return "Kitchen Lv." + runtime.KitchenSpeedLevel +
+                "\nSpeed x" + runtime.KitchenSpeedMultiplier.ToString("0.00");
+        }
+
+        private string BuildBarSummaryLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Бар ур.0\nСкорость x1.00"
+                    : "Bar Lv.0\nSpeed x1.00";
+            }
+
+            if (LocalizationService.IsRussian)
+            {
+                return "Бар ур." + runtime.BarSpeedLevel +
+                    "\nСкорость x" + runtime.BarSpeedMultiplier.ToString("0.00");
+            }
+
+            return "Bar Lv." + runtime.BarSpeedLevel +
+                "\nSpeed x" + runtime.BarSpeedMultiplier.ToString("0.00");
+        }
+
+        private string BuildFurnitureUpgradeActionLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Столы ур.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nДоход x1.00"
+                    : "Tables Lv.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nIncome x1.00";
+            }
+
+            return LocalizationService.Format(
+                "rest.upgrade.tables",
+                runtime.TableRevenueLevel,
+                runtime.CanAffordTableRevenueUpgrade() ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                runtime.NextTableRevenueUpgradeCost,
+                runtime.TableRevenueMultiplier.ToString("0.00"));
+        }
+
+        private string BuildKitchenUpgradeActionLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Кухня ур.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nСкорость x1.00"
+                    : "Kitchen Lv.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nSpeed x1.00";
+            }
+
+            return LocalizationService.Format(
+                "rest.upgrade.kitchen",
+                runtime.KitchenSpeedLevel,
+                runtime.CanAffordKitchenSpeedUpgrade() ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                runtime.NextKitchenSpeedUpgradeCost,
+                runtime.KitchenSpeedMultiplier.ToString("0.00"));
+        }
+
+        private string BuildBarUpgradeActionLabel()
+        {
+            if (runtime == null)
+            {
+                return LocalizationService.IsRussian
+                    ? "Бар ур.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nСкорость x1.00"
+                    : "Bar Lv.0  " + LocalizationService.Get("rest.ui.action_need") + "0\nSpeed x1.00";
+            }
+
+            return LocalizationService.Format(
+                "rest.upgrade.bar",
+                runtime.BarSpeedLevel,
+                runtime.CanAffordBarSpeedUpgrade() ? LocalizationService.Get("rest.ui.action_buy") : LocalizationService.Get("rest.ui.action_need"),
+                runtime.NextBarSpeedUpgradeCost,
+                runtime.BarSpeedMultiplier.ToString("0.00"));
         }
 
         private string BuildWaiterMoveSpeedUpgradeLabel()
@@ -1690,14 +2124,63 @@ namespace IdleRestaurant.Gameplay
             return LocalizationService.IsRussian ? "Официант: " + waiterState : "Waiter: " + waiterState;
         }
 
+        private static string BuildHireWaiterSoonMessage()
+        {
+            return LocalizationService.IsRussian
+                ? "Экран найма уже подготовлен. Логику нового официанта и его работу в зале добавим следующим шагом."
+                : "The hire screen is ready. We will add waiter logic and floor behavior next.";
+        }
+
         private static string BuildMoneyChipLabel(int moneyAmount)
         {
             return "$" + Mathf.Max(0, moneyAmount);
         }
 
+        private static string GetUpgradeDetailsBackLabel()
+        {
+            return LocalizationService.IsRussian ? "Назад" : "Back";
+        }
+
+        private static string GetWaiterCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Официант" : "Waiter";
+        }
+
+        private static string GetFurnitureCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Мебель" : "Furniture";
+        }
+
+        private static string GetKitchenCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Кухня" : "Kitchen";
+        }
+
+        private static string GetBarCategoryLabel()
+        {
+            return LocalizationService.IsRussian ? "Бар" : "Bar";
+        }
+
         private static string GetWaiterBackButtonLabel()
         {
             return LocalizationService.IsRussian ? "Назад" : "Back";
+        }
+
+        private static string GetWaiterListBackButtonLabel()
+        {
+            return GetWaiterBackButtonLabel();
+        }
+
+        private static string GetWaiterListTitle()
+        {
+            return LocalizationService.IsRussian ? "Официанты" : "Waiters";
+        }
+
+        private static string GetHireWaiterLabel()
+        {
+            return LocalizationService.IsRussian
+                ? "Нанять\nНовый слот\nСкоро"
+                : "Hire\nNew Slot\nSoon";
         }
 
         private static string GetWaiterMoveSpeedTitle()
@@ -1926,7 +2409,7 @@ namespace IdleRestaurant.Gameplay
             upgradesPanelVisible = visible;
             if (!visible)
             {
-                waiterDetailsVisible = false;
+                ShowUpgradesOverview();
             }
 
             EnsureUpgradesPanelAnimationSetup();
